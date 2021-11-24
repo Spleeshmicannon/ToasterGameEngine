@@ -13,6 +13,13 @@ namespace toast
 	}
 
 	template<class T>
+	TINLINE T* tnew()
+	{
+		void* buffer = Platform::allocate(sizeof(T), false);
+		return reinterpret_cast<T*>(new(buffer) T());
+	}
+
+	template<class T>
 	TINLINE void tdelete(T* block)
 	{
 		block->~T();

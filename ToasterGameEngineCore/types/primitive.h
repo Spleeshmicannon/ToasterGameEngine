@@ -50,4 +50,7 @@ namespace toast
 
 	// bool
 	typedef bool b8;
+	
+	// other
+	typedef void* ptr;
 }

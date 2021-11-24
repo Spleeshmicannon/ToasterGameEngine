@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "logger.h"
 #include "memory.h"
+#include "event.h"
 
 namespace toast
 {
@@ -10,6 +11,7 @@ namespace toast
 	{
 		Logger logger;
 		Platform platform;
+		EventManager eventManager;
 	};
 
 	Application::Application() : initialised(false),
@@ -83,7 +85,7 @@ namespace toast
 
 		running = true;
 
-		internals->logger.log<logLevel::TTRACE>("Application start time: " +
+		internals->logger.log<logLevel::TINFO>("Application start time: " +
 			std::to_string(duration(clock::now() - start).count()));
 
 		return true;

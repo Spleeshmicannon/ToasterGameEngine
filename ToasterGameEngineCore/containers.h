@@ -1,52 +1,58 @@
 #pragma once
-#include "primitive.h"
-#include "../memory.h"
-#include "../logger.h"
+#include "types/primitive.h"
+#include "memory.h"
+#include "logger.h"
 
 namespace toast
 {
-	template<typename T, u64 capInc = 10>
+	template<typename T, u32 capInc = 10>
 	class LiteVector
 	{
 	public:
-		u64 capacity;
-		u64 length;
+		u32 capacity;
+		u32 length;
 		T* data;
 
 	public:
 		LiteVector();
-		LiteVector(u16 size);
+		LiteVector(u32 size);
 		~LiteVector();
 
-		constexpr T& operator[](u64 index);
-		void resize(u64 size);
+		T& safeGet(u32 index);
+		void resize(u32 size);
 		void push(T entry);
-		void pop(T entry);
+		void pop();
+		void unsafePopAt(u32 index);
+		void safePopAt(u32 index);
 	};
 
-	template<typename T, u64 capInc>
+	template<typename T, u32 capInc>
 	LiteVector<T, capInc>::LiteVector() : capacity(10), 
-		length(0), data(tnew<T>(10))
-	{}
+		length(0), data(allocate<T>(10))
+	{
+		zeroMem(data, capacity);
+	}
 
-	template<typename T, u64 capInc>
-	LiteVector<T, capInc>::LiteVector(u16 size) : capacity(size),
-		length(0), data(tnew<T>(size))
-	{}
+	template<typename T, u32 capInc>
+	LiteVector<T, capInc>::LiteVector(u32 size) : capacity(size),
+		length(0), data(allocate<T>(size))
+	{
+		zeroMem(data, capacity);
+	}
 
-	template<typename T, u64 capInc>
+	template<typename T, u32 capInc>
 	LiteVector<T, capInc>::~LiteVector()
 	{
 		tdelete<T>(data);
 	}
 
-	template<typename T, u64 capInc>
-	constexpr T& LiteVector<T, capInc>::operator[](u64 index)
+	template<typename T, u32 capInc>
+	T& LiteVector<T, capInc>::safeGet(u32 index)
 	{
 		if (index <= length)
 		{
 			return data[index];
-		}
+		} 
 		else
 		{
 			Logger::staticLog<logLevel::TERROR>(
@@ -55,8 +61,8 @@ namespace toast
 		}
 	}
 
-	template<typename T, u64 capInc>
-	void LiteVector<T, capInc>::resize(u64 size)
+	template<typename T, u32 capInc>
+	void LiteVector<T, capInc>::resize(u32 size)
 	{
 		T* temp = allocate<T>(size);
 		copyMem(temp, data, size);
@@ -66,7 +72,7 @@ namespace toast
 		capacity = size;
 	}
 
-	template<typename T, u64 capInc>
+	template<typename T, u32 capInc>
 	void LiteVector<T, capInc>::push(T entry)
 	{
 		if (length < capacity)
@@ -81,8 +87,8 @@ namespace toast
 		}
 	}
 
-	template<typename T, u64 capInc>
-	void LiteVector<T, capInc>::pop(T entry)
+	template<typename T, u32 capInc>
+	void LiteVector<T, capInc>::pop()
 	{
 		data[length] = 0;
 		--length;
@@ -90,6 +96,48 @@ namespace toast
 		{
 			capacity = capacity / capInc;
 			resize(capacity);
+		}
+	}
+
+	template<typename T, u32 capInc>
+	void LiteVector<T, capInc>::unsafePopAt(u32 index)
+	{
+		--length;
+		for (u32 i = index; i < length; ++i)
+		{
+			data[i] = data[i + 1];
+		}
+		
+		const u32 downCap = capacity / capInc;
+		if (length <= downCap)
+		{
+			capacity = downCap;
+			resize(capacity);
+		}
+	}
+
+	template<typename T, u32 capInc>
+	void LiteVector<T, capInc>::safePopAt(u32 index)
+	{
+		if (index <= length)
+		{
+			--length;
+			for (u32 i = index; i < length; ++i)
+			{
+				data[i] = data[i + 1];
+			}
+
+			const u32 downCap = capacity / capInc;
+			if (length <= downCap)
+			{
+				capacity = downCap;
+				resize(capacity);
+			}
+		}
+		else
+		{
+			Logger::staticLog<logLevel::TERROR>(
+				"Can't access LiteVec member, index larger than length!");
 		}
 	}
 }
