@@ -6,7 +6,6 @@
 
 namespace toast
 {
-
 	struct _internals
 	{
 		Logger logger;

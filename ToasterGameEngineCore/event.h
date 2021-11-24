@@ -45,7 +45,7 @@ namespace toast
 
 	struct onEventData
 	{
-		u16 code;
+		eventCode::sysEventCode code;
 		ptr sender;
 		ptr listenerInst;
 		eventContext evCont;

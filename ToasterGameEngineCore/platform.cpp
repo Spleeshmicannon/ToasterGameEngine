@@ -167,7 +167,7 @@ namespace toast
 	{
 		// setting colour
 		HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-		static u8 levels[6] = { 64, 4, 6, 1, 2, 8 };
+		static u8 levels[6] = { 64, 4, 6, 9, 2, 8 };
 		SetConsoleTextAttribute(consoleHandle, levels[color]);
 
 		// outputing message
@@ -179,7 +179,7 @@ namespace toast
 	{
 		// setting colour
 		HANDLE consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
-		static u8 levels[6] = { 64, 4, 6, 1, 2, 8 };
+		static u8 levels[6] = { 64, 4, 6, 9, 2, 8 };
 		SetConsoleTextAttribute(consoleHandle, levels[color]);
 
 		// outputing message
@@ -458,13 +458,13 @@ namespace toast
 
 	void Platform::consoleWrite(const str<cv> &message, const color color)
 	{
-		const str<cv> colour_strings[] = {"0;41", "1;31", "1;33", "1;32", "1;34", "1;30"};
+		const str<cv> colour_strings[] = {"0;41", "1;31", "1;33", "1;34", "1;32", "1;30"};
 		std::cout << "\033[" + colour_strings[color] + "m" + message + "\033[0m";
 	}
 
 	void Platform::consoleWriteError(const str<cv> &message, const color color)
 	{
-		const str<cv> colour_strings[] = { "0;41", "1;31", "1;33", "1;32", "1;34", "1;30" };
+		const str<cv> colour_strings[] = { "0;41", "1;31", "1;33", "1;34", "1;32", "1;30" };
 		std::cerr << "\033[" + colour_strings[color] + "m" + message + "\033[0m";
 	}
 
