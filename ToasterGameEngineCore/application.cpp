@@ -38,6 +38,13 @@ namespace toast
 		internals->logger.clearCachedLogs();
 		internals->logger.open();
 		internals->logger.log<logLevel::TTRACE>("Logger Opened");
+
+		internals->logger.log<logLevel::TTRACE>("Logger trace");
+		internals->logger.log<logLevel::TDEBUG>("Logger debug");
+		internals->logger.log<logLevel::TINFO>("Logger info");
+		internals->logger.log<logLevel::TWARN>("Logger warn");
+		internals->logger.log<logLevel::TERROR>("Logger error");
+		internals->logger.log<logLevel::TFATAL>("Logger fatal");
 		
 		// getting user defined configuration
 		toast::config gameConfig = usrGame.init();

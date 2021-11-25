@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Add source to this project's executable.
-add_library (ToasterGameEngineCore SHARED "application.cpp" "platform.cpp" "logger.cpp" "event.cpp" "input.h")
+add_library (ToasterGameEngineCore SHARED "application.cpp" "platform.cpp" "logger.cpp" "event.cpp" "input.h" "types/structs.h" "input.cpp")
 
 # TODO: Add tests and install targets if needed.
 target_include_directories(ToasterGameEngineCore PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}  "${sourceDir}/out/install/${presetName}/toasterTest")

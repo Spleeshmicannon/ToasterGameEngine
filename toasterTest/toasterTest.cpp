@@ -18,9 +18,8 @@ public:
 
 	bool update() override
 	{
-		return true;
+		return false;
 	}
-
 };
 
 int main()

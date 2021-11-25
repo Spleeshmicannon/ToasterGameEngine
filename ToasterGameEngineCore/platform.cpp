@@ -167,7 +167,7 @@ namespace toast
 	{
 		// setting colour
 		HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-		static u8 levels[6] = { 64, 4, 6, 9, 2, 8 };
+		static const u8 levels[6] = { 192, 12, 6, 9, 2, 7 };
 		SetConsoleTextAttribute(consoleHandle, levels[color]);
 
 		// outputing message
@@ -179,7 +179,7 @@ namespace toast
 	{
 		// setting colour
 		HANDLE consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
-		static u8 levels[6] = { 64, 4, 6, 9, 2, 8 };
+		static const u8 levels[6] = { 192, 12, 6, 9, 2, 7 };
 		SetConsoleTextAttribute(consoleHandle, levels[color]);
 
 		// outputing message
