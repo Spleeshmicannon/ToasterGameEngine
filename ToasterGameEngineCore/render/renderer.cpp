@@ -29,6 +29,25 @@ namespace toast
 		VkDevice logicalDevice;
 	};
 
+	struct vulkanDeviceRequirements
+	{
+		b8 graphics, present, compute, transfer, samplerAnisotropy, discreteGpu;
+	};
+
+	struct vulkanPhysDeviceQueFamInfo
+	{
+		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
+	};
+
+	struct vulknSwapchainSupportInfo
+	{
+		VkSurfaceCapabilitiesKHR capabilites;
+		u32 formatCount;
+		VkSurfaceFormatKHR* formats;
+		u32 presentModeCount;
+		VkPresentModeKHR* presetnModes;
+	};
+
 	TINLINE void checkVulkan(VkResult sym)
 	{
 #ifndef TOAST_RELEASE
@@ -61,6 +80,101 @@ namespace toast
 		return true;
 	}
 #endif
+	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice physcialDevice,
+		VkSurfaceKHR surface, vulknSwapchainSupportInfo * outSuppInfo)
+	{
+
+	}
+
+
+	TINLINE b8 physicalDeviceMeetsRequirements(
+		VkPhysicalDevice device,
+		VkSurfaceKHR surface,
+		VkPhysicalDeviceProperties props,
+		VkPhysicalDeviceFeatures feat,
+		vulkanDeviceRequirements dreq, 
+		vulknSwapchainSupportInfo *outSInfo,
+		vulkanPhysDeviceQueFamInfo *outQue)
+	{
+		outQue->graphicsIndex = -1;
+		outQue->presentIndex = -1;
+		outQue->computeIndex = -1;
+		outQue->transferIndex = -1;
+
+		if (dreq.discreteGpu) 
+		{
+			if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			{
+				Logger::staticLog<logLevel::TINFO>("Device is not discrete GPU");
+				return false;
+			}
+		}
+
+		u32 queFamCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queFamCount, 0);
+		VkQueueFamilyProperties * queFams = allocate<VkQueueFamilyProperties>(queFamCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queFamCount, queFams);
+
+		Logger::staticLog<logLevel::TDEBUG>(
+			"| Graphics | Present | Compute | Transfer |            Name            |");
+		u8 minTransScore = 255;
+		for (u32 i = 0; i < queFamCount; ++i)
+		{
+			u8 currentTransScore = 0;
+
+			// graphics que?
+			if (queFams[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+				outQue->graphicsIndex = i;
+				++currentTransScore;
+			}
+
+			// compute que?
+			if (queFams[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
+			{
+				outQue->computeIndex = i;
+				++currentTransScore;
+			}
+
+			// Transfer que?
+			if ((queFams[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && 
+				currentTransScore <= minTransScore)
+			{
+				minTransScore = currentTransScore;
+				outQue->transferIndex = i;
+			}
+
+			// Present Que?
+			VkBool32 supportsPresent = VK_FALSE;
+			checkVulkan(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, 
+				&supportsPresent));
+			if (supportsPresent)
+			{
+				outQue->presentIndex = i;
+			}
+		}
+
+		deallocate<VkQueueFamilyProperties>(queFams);
+
+		Logger::staticLog<logLevel::TDEBUG>(
+			"|    "			+ std::to_string(outQue->graphicsIndex) +
+			"     |    "	+ std::to_string(outQue->presentIndex) +
+			"    |    "		+ std::to_string(outQue->computeIndex) +
+			"    |     "	+ std::to_string(outQue->transferIndex) +
+			"    | "		+ props.deviceName +
+			" |");
+
+		if ((!dreq.graphics || (dreq.graphics && outQue->graphicsIndex != -1)) &&
+			(!dreq.present || (dreq.present && outQue->presentIndex != -1)) &&
+			(!dreq.compute || (dreq.compute && outQue->computeIndex != -1)) &&
+			(!dreq.transfer || (dreq.transfer && outQue->transferIndex != -1)))
+		{
+			Logger::staticLog<logLevel::TINFO>("Device meets queue requirements");
+			return true;
+		}
+
+		return false;
+	}
 
 	b8 Renderer::setupDevice()
 	{
@@ -73,6 +187,46 @@ namespace toast
 		{
 			Logger::staticLog<logLevel::TFATAL>("No devices that suppport vulkan");
 			return false;
+		}
+
+		// reading in device data for each device
+		VkPhysicalDevice* physicalDevices = allocate<VkPhysicalDevice>(physicalDeviceCount);
+		checkVulkan(vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount, 
+			physicalDevices));
+
+		// processing device data
+		for (u32 i = 0; i < physicalDeviceCount; ++i)
+		{
+			VkPhysicalDeviceProperties props;
+			vkGetPhysicalDeviceProperties(physicalDevices[i], &props);
+
+			VkPhysicalDeviceFeatures feat;
+			vkGetPhysicalDeviceFeatures(physicalDevices[i], &feat);
+
+			VkPhysicalDeviceMemoryProperties memProps;
+			vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &memProps);
+
+			// a clear way of setting device requirements
+			vulkanDeviceRequirements req = {};
+			req.graphics = true;
+			req.present = true;
+			req.transfer = true;
+			req.compute = true;
+			req.samplerAnisotropy = true;
+			req.discreteGpu = true;
+
+			// device related extensions
+			constexpr u8 extCount = 1;
+			const cv* extNames[extCount] =
+			{
+				VK_KHR_SWAPCHAIN_EXTENSION_NAME
+			};
+
+			vulknSwapchainSupportInfo swapSupInfo;
+			vulkanPhysDeviceQueFamInfo queFamInfo;
+
+			physicalDeviceMeetsRequirements(physicalDevices[i], context->surface, props, feat, req,
+				&swapSupInfo, &queFamInfo);
 		}
 
 		return true;
@@ -106,8 +260,9 @@ namespace toast
 		VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		createInfo.pApplicationInfo = &appInfo;
 
+		// defining the extensions being used
 		constexpr u8 extCount = 2;
-		const char* extNames[extCount] =
+		const cv* extNames[extCount] =
 		{
 			VK_KHR_SURFACE_EXTENSION_NAME,
 #ifdef TWIN32
