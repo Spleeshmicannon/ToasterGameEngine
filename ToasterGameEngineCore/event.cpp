@@ -2,7 +2,6 @@
 #include "memory.h"
 #include "containers.h"
 
-
 #define TOAST_MAX_MESSAGE_CODES 8000
 
 namespace toast
@@ -10,12 +9,12 @@ namespace toast
 	struct registeredEvent
 	{
 		ptr listener;
-		func<b8, onEventData> callback;
+		func<b8, eventCode, ptr, ptr, eventContext> callback;
 	};
 
 	struct eventCodeEntry
 	{
-		LiteVector<registeredEvent> * events;
+		vector<registeredEvent> * events;
 	};
 
 	struct eventState
@@ -32,58 +31,57 @@ namespace toast
 		{
 			if (state->registered[i].events != nullptr)
 			{
-				tdelete<LiteVector<registeredEvent>>(state->registered[i].events);
+				tdelete<std::vector<registeredEvent>>(state->registered[i].events);
 			}
 		}
 
 		deallocate<eventState>(state);
 	}
 
-	b8 EventManager::registerEvent(eventCode::sysEventCode code, ptr listener,
-		func<b8, onEventData> onEvent)
+	b8 EventManager::registerEvent(eventCode code, ptr listener,
+		func<b8, eventCode, ptr, ptr, eventContext> onEvent)
 	{
 
 		// allocating any necessary new memory
-		if (state->registered[code].events == nullptr)
+		if (state->registered[static_cast<u16>(code)].events == nullptr)
 		{
-			state->registered[code].events =
-				tnew<LiteVector<registeredEvent>>();
+			state->registered[static_cast<u16>(code)].events =
+				tnew<std::vector<registeredEvent>>();
 		}
 		
 		// checking for duplicate listener
-		b8 duplicateListnerFound = false;
-		for (u32 i = 0; (i < state->registered[code].events->length) ||
-			(!duplicateListnerFound); ++i)
+		b8 duplicateFound = false;
+		for (u32 i = 0; i < state->registered[static_cast<u16>(code)].events->size(); ++i)
 		{
-			duplicateListnerFound = state->registered[code].events
-				->data[i].listener == listener;
-		}
-
-		if (duplicateListnerFound)
-		{
-			Logger::staticLog<logLevel::TWARN>("Can't register duplicate listener!");
-			return false;
+			if ((*state->registered[static_cast<u16>(code)].events)[i].callback == onEvent)
+			{
+				Logger::staticLog<logLevel::TWARN>("Can't register duplicate event!");
+				return false;
+			}
 		}
 
 		// register event if no duplicate found
-		state->registered[code].events->push({listener, onEvent});
+		state->registered[static_cast<u16>(code)].events->push_back({ listener, onEvent });
 		return true;
 	}
 
-	b8 EventManager::unregisterEvent(eventCode::sysEventCode code, ptr listener,
-		func<b8, onEventData> onEvent)
+	b8 EventManager::unregisterEvent(eventCode code, ptr listener,
+		func<b8, eventCode, ptr, ptr, eventContext> onEvent)
 	{
-		if (state->registered[code].events == nullptr)
+		if (state->registered[static_cast<u16>(code)].events == nullptr)
 		{
 			Logger::staticLog<logLevel::TWARN>("Can't unregister unregsitered event!");
 			return false;
 		}
 
-		for (u32 i = 0; i < state->registered[code].events->length; ++i)
+		for (u32 i = 0; i < state->registered[static_cast<u16>(code)].events->size(); ++i)
 		{
-			if (state->registered[code].events->data[i].listener == listener)
+
+
+			if ((*state->registered[static_cast<u16>(code)].events)[i].callback == onEvent)
 			{
-				state->registered[code].events->unsafePopAt(i);
+				state->registered[static_cast<u16>(code)].events->erase(
+					state->registered[static_cast<u16>(code)].events->begin() + i);
 				return true;
 			}
 		}
@@ -92,24 +90,33 @@ namespace toast
 		return false;
 	}
 
-	b8 EventManager::fireEvent(eventCode::sysEventCode code, ptr listener,
-		func<b8, onEventData> onEvent)
+	b8 EventManager::fireEvent(eventCode code, ptr sender, eventContext context)
 	{
-		if (state->registered[code].events == nullptr)
+		if (state->registered[static_cast<u16>(code)].events == nullptr)
 		{
+			//Logger::staticLog<logLevel::TWARN>("Event doesn't exist");
 			return false;
 		}
 
-		for (u32 i = 0; i < state->registered[code].events->length; ++i)
+		for (u32 i = 0; i < state->registered[static_cast<u16>(code)].events->size(); ++i)
 		{
-			if (state->registered[code].events->data[i].listener == listener)
+			const registeredEvent e = (*state->registered[static_cast<u16>(code)].events)[i];
+
+			if (e.callback != nullptr)
 			{
-				// message has been handled, dont send to other listeners
-				return true;
+				if (e.callback(code, sender, e.listener, context))
+				{
+					// message has been handled, dont send to other listeners
+					return true;
+				}
+			}
+			else
+			{
+				Logger::staticLog<logLevel::TWARN>("Null callback");
 			}
 		}
 
-		Logger::staticLog<logLevel::TWARN>("Event not found");
+		Logger::staticLog<logLevel::TWARN>("Event not handled");
 		return false;
 	}
 }

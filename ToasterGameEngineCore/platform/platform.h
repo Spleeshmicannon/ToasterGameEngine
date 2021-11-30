@@ -1,7 +1,7 @@
 #pragma once
-#include "asserts.h"
-#include "types/string.h"
-#include "macros.h"
+#include "../asserts.h"
+#include "../types/string.h"
+#include "../macros.h"
 
 #ifdef TWIN32
 #include <windows.h>
@@ -16,7 +16,7 @@
 
 namespace toast
 {
-	enum color 
+	enum class color 
 	{
 		TRED_BKG = 0,
 		TRED = 1,
@@ -26,15 +26,7 @@ namespace toast
 		TGREY = 5
 	};
 
-#ifdef TWIN32
-	struct platformState
-	{
-		HINSTANCE hinst;
-		HWND hwnd;
-	};
-#elif defined(TLINUX)
 	struct platformState;
-#endif
 
 	/// <summary>
 	/// Class for static use only. Essentially a glorified namespace,
@@ -42,13 +34,14 @@ namespace toast
 	/// </summary>
 	class Platform final
 	{
-	private:
+	public:
 		// the internal state of the platform
 		platformState* state;
+
 		// time based variables
 #ifdef TWIN32
-		f64 clockFreq;
-		LARGE_INTEGER startTime;
+		static f64 clockFreq;
+		static LARGE_INTEGER startTime;
 #endif
 	public:
 		Platform();
@@ -63,17 +56,16 @@ namespace toast
 		static bitmask regex(bitmask params,
 			const char str1[size], const char str2[size]);*/
 
-		static void* allocate(u64 size, b8 aligned);
-		static void deallocate(void* block, b8 aligned);
-		static void* zeroMem(void* block, u64 size);
-		static void* copyMem(void* dest, const void* source, u64 size);
-		static void* setMem(void* dest, i32 value, u64 size);
+		TEXPORT static void* allocate(u64 size, b8 aligned);
+		TEXPORT static void deallocate(void* block, b8 aligned);
+		TEXPORT static void* zeroMem(void* block, u64 size);
+		TEXPORT static void* copyMem(void* dest, void* source, u64 size);
+		TEXPORT static void* setMem(void* dest, i32 value, u64 size);
 
-		static void consoleWrite(const str<cv> &message, const color color);
+		TEXPORT static void consoleWrite(const str<cv> &message, const color color);
+		TEXPORT static void consoleWriteError(const str<cv> &message, const color color);
 
-		static void consoleWriteError(const str<cv> &message, const color color);
-
-		f64 getAbsTime();
+		static f64 getAbsTime();
 
 		static void sleep(u64 ms);
 

@@ -1,5 +1,0 @@
-C:/Users/n10255460/source/repos/ToasterGameEngine/CMakeFiles/ALL_BUILD.dir
-C:/Users/n10255460/source/repos/ToasterGameEngine/CMakeFiles/ZERO_CHECK.dir
-C:/Users/n10255460/source/repos/ToasterGameEngine/ToasterGameEngineCore/CMakeFiles/ToasterGameEngineCore.dir
-C:/Users/n10255460/source/repos/ToasterGameEngine/toasterTest/CMakeFiles/toasterTest.dir
-C:/Users/n10255460/source/repos/ToasterGameEngine/toasterTest/CMakeFiles/ALL_BUILD.dir

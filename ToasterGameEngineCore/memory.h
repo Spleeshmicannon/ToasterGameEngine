@@ -1,14 +1,14 @@
 #pragma once
 #include "macros.h"
 #include "types/primitive.h"
-#include "platform.h"
+#include "platform/platform.h"
 
 namespace toast
 {
 	template<class T>
-	TINLINE T* tnew(u64 size)
+	TINLINE T* tnew(u64 length)
 	{
-		void* buffer = Platform::allocate(size * sizeof(T), false);
+		void* buffer = Platform::allocate(length * sizeof(T), false);
 		return reinterpret_cast<T*>(new(buffer) T());
 	}
 
@@ -20,6 +20,21 @@ namespace toast
 	}
 
 	template<class T>
+	TINLINE T* tnew(T &inst)
+	{
+		void* buffer = Platform::allocate(sizeof(T), false);
+		return reinterpret_cast<T*>(new(buffer) T(inst));
+	}
+
+	template<class T>
+	TINLINE T* tnew(T&& inst)
+	{
+		void* buffer = Platform::allocate(sizeof(T), false);
+		return reinterpret_cast<T*>(new(buffer) T(inst));
+	}
+
+
+	template<class T>
 	TINLINE void tdelete(T* block)
 	{
 		block->~T();
@@ -27,9 +42,15 @@ namespace toast
 	}
 
 	template<typename T>
-	TINLINE T* allocate(u64 size)
+	TINLINE T* allocate(u64 length)
 	{
-		return reinterpret_cast<T*>(Platform::allocate(size*sizeof(T), false));
+		return reinterpret_cast<T*>(Platform::allocate(length *sizeof(T), false));
+	}
+
+	template<typename T>
+	TINLINE T* allocate()
+	{
+		return reinterpret_cast<T*>(Platform::allocate(sizeof(T), false));
 	}
 
 	template<typename T>
@@ -39,20 +60,20 @@ namespace toast
 	}
 
 	template<typename T>
-	TINLINE void zeroMem(T* block, u64 size)
+	TINLINE void zeroMem(T* block, u64 length)
 	{
-		Platform::zeroMem(block, size * sizeof(T));
+		Platform::zeroMem(block, length * sizeof(T));
 	}
 
 	template<typename T>
-	TINLINE void copyMem(T* dest, const T* source, u64 size)
+	TINLINE void copyMem(T* dest, T* source, u64 length)
 	{
-		Platform::copyMem(dest, source, size * sizeof(T));
+		Platform::copyMem(dest, source, length * sizeof(T));
 	}
 
 	template<typename T>
-	TINLINE void setMem(T* dest, i32 value, u64 size)
+	TINLINE void setMem(T* dest, i32 value, u64 length)
 	{
-		Platform::setMem(dest, value, size * sizeof(T));
+		Platform::setMem(dest, value, length * sizeof(T));
 	}
 }

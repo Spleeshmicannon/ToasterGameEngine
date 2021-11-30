@@ -5,6 +5,8 @@
 #include "game.h"
 #include "types/time.h"
 #include "logger.h"
+#include "memory.h"
+#include "input.h"
 
 namespace toast
 {

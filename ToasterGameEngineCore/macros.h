@@ -26,7 +26,8 @@
 #endif
 
 // Getting debugbreak/builtintrap for errors
-#define TASSERT_ENABLED
+//#define TOAST_RELEASE
+
 #ifdef TASSERT_ENABLED
 #ifdef _MSC_VER
 #include <intrin.h>

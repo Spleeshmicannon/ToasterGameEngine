@@ -16,9 +16,9 @@ public:
 		return true;
 	}
 
-	bool update() override
+	bool update(float deltaTime) override
 	{
-		return false;
+		return true;
 	}
 };
 

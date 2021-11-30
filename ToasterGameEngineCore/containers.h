@@ -2,9 +2,13 @@
 #include "types/primitive.h"
 #include "memory.h"
 #include "logger.h"
+#include <vector>
 
 namespace toast
 {
+	template<typename T>
+	using vector = std::vector<T>;
+
 	template<typename T, u32 capInc = 10>
 	class LiteVector
 	{

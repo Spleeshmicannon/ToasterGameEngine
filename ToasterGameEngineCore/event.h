@@ -5,22 +5,20 @@
 
 namespace toast
 {
-	namespace eventCode
-	{
-		enum sysEventCode
-		{
-			TAPPLICATION_QUIT	= 0x01,
-			TKEY_PRESSED		= 0x02,
-			TKEY_RELEASED		= 0x03,
-			TBUTTON_PRESSED		= 0x04,
-			TBUTTON_RELEASED	= 0x05,
-			TMOUSE_MOVED		= 0x06,
-			TMOUSE_WHEEL		= 0x07,
-			TCODE_RESIZED		= 0x08,
 
-			TMAX_EVENT_CODE		= 0xFF
-		};
-	}
+	enum class eventCode
+	{
+		APPLICATION_QUIT	= 0x01,
+		KEY_PRESSED			= 0x02,
+		KEY_RELEASED		= 0x03,
+		BUTTON_PRESSED		= 0x04,
+		BUTTON_RELEASED		= 0x05,
+		MOUSE_SHIFT			= 0x06, // mouse moved
+		MOUSE_WHEEL			= 0x07,
+		CODE_RESIZED		= 0x08,
+
+		MAX_EVENT_CODE		= 0xFF
+	};
 
 	struct eventContext
 	{
@@ -43,14 +41,6 @@ namespace toast
 		};
 	};
 
-	struct onEventData
-	{
-		eventCode::sysEventCode code;
-		ptr sender;
-		ptr listenerInst;
-		eventContext evCont;
-	};
-
 	struct eventState;
 
 	class EventManager
@@ -62,13 +52,12 @@ namespace toast
 		EventManager();
 		~EventManager();
 
-		b8 registerEvent(eventCode::sysEventCode code, ptr listener,
-			func<b8, onEventData> onEvent);
-		b8 unregisterEvent(eventCode::sysEventCode code, ptr listener,
-			func<b8, onEventData> onEvent);
+		b8 registerEvent(eventCode code, ptr listener,
+			func<b8, eventCode, ptr, ptr, eventContext> onEvent);
 
-		b8 fireEvent(eventCode::sysEventCode code, ptr listener,
-			func<b8, onEventData> onEvent);
+		b8 unregisterEvent(eventCode code, ptr listener,
+			func<b8, eventCode, ptr, ptr, eventContext> onEvent);
 
+		b8 fireEvent(eventCode code, ptr sender, eventContext context);
 	};
 }

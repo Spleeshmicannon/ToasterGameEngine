@@ -3,40 +3,32 @@
 #include "types/primitive.h"
 #include "types/string.h"
 #include "game.h"
-#include "memory.h"
+#include "event.h"
 #include "input.h"
 
 namespace toast
 {
-	struct _internals;
-
-	b8 isKeyDown(keys key);
-	b8 isKeyUp(keys key);
-	b8 wasKeyDown(keys key);
-	b8 wasKeyUp(keys key);
-
-	b8 isMseBtnDown(mseBtns btn);
-	b8 isMseBtnUp(mseBtns btn);
-	b8 wasMseBtnDown(mseBtns btn);
-	b8 wasMseBtnUp(mseBtns btn);
-
-	void getMsePos(point* pt);
-	void getPrevMsePos(point* pt);
+	struct applicationInternals;
 
 	class TEXPORT Application
 	{
 	private:
-		b8 initialised;
-		b8 running;
-		b8 suspended;
+		static b8 running;
+		static b8 suspended;
 
 	private:
-		_internals* internals;
+		static applicationInternals* internals;
+
+	private:
+		static b8 onEvent(eventCode code, ptr sender,
+			ptr listener, eventContext context);
+
+		static b8 onKey(eventCode code, ptr sender,
+			ptr listener, eventContext context);
 
 	public:
-		Application();
-		~Application();
-		b8 create(Game &usrGame);
-		b8 runLoop(Game &usrGame);
+
+		static b8 create(Game &usrGame);
+		static b8 runLoop(Game &usrGame);
 	};
 }

@@ -2,6 +2,6 @@
 
 namespace toast
 {
-	template<typename Rtype = void, typename Ptype = void>
-	using func = Rtype(*)(Ptype);
+	template<typename Rtype = void, typename ... Ptype>
+	using func = Rtype(*)(Ptype ...);
 }

@@ -5,11 +5,7 @@
 #include "types/string.h"
 #include "types/time.h"
 
-#include "platform.h"
-
-#define TOAST_ASSERT
-#define TOAST_ASSERT_DEBUG
-#include "asserts.h"
+#include "platform/platform.h"
 #include "macros.h"
 
 // logger specific macros
@@ -108,71 +104,71 @@ namespace toast
 	template<> TINLINE void Logger::log<logLevel::TFATAL>(const str<cv> &message) const
 	{
 		*logFile << "[FATAL]: " << message << "\n";
-		Platform::consoleWriteError("[FATAL]: " + message + "\n", TRED_BKG);
+		Platform::consoleWriteError("[FATAL]: " + message + "\n", color::TRED_BKG);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TFATAL>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[FATAL]: " + message + "\n", TRED_BKG);
+		Platform::consoleWriteError("[FATAL]: " + message + "\n", color::TRED_BKG);
 	}
 
 	template<> TINLINE void Logger::log<logLevel::TERROR>(const str<cv> &message) const
 	{
 		*logFile << "[ERROR]: " << message << "\n";
-		Platform::consoleWriteError("[ERROR]: " + message + "\n", TRED);
+		Platform::consoleWriteError("[ERROR]: " + message + "\n", color::TRED);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TERROR>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[ERROR]: " + message + "\n", TRED);
+		Platform::consoleWriteError("[ERROR]: " + message + "\n", color::TRED);
 	}
 
 #ifdef TLOG_WARN
 	template<> TINLINE void Logger::log<logLevel::TWARN>(const str<cv> &message) const
 	{
 		*logFile << "[WARNING]: " << message << "\n";
-		Platform::consoleWrite("[WARNING]: " + message + "\n", TYELLOW);
+		Platform::consoleWrite("[WARNING]: " + message + "\n", color::TYELLOW);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TWARN>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[WARNING]: " + message + "\n", TYELLOW);
+		Platform::consoleWriteError("[WARNING]: " + message + "\n", color::TYELLOW);
 	}
 #endif
 #ifdef TLOG_INFO
 	template<> TINLINE void Logger::log<logLevel::TINFO>(const str<cv> &message) const
 	{
 		*logFile << "[INFO]: " << message << "\n";
-		Platform::consoleWrite("[INFO]: " + message + "\n", TBLUE);
+		Platform::consoleWrite("[INFO]: " + message + "\n", color::TBLUE);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TINFO>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[INFO]: " + message + "\n", TBLUE);
+		Platform::consoleWriteError("[INFO]: " + message + "\n", color::TBLUE);
 	}
 #endif
 #ifdef TLOG_DEBUG
 	template<> TINLINE void Logger::log<logLevel::TDEBUG>(const str<cv> &message) const
 	{
 		*logFile << "[DEBUG]: " << message << "\n";
-		Platform::consoleWrite("[DEBUG]: " + message + "\n", TGREEN);
+		Platform::consoleWrite("[DEBUG]: " + message + "\n", color::TGREEN);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TDEBUG>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[DEBUG]: " + message + "\n", TGREEN);
+		Platform::consoleWriteError("[DEBUG]: " + message + "\n", color::TGREEN);
 	}
 #endif
 #ifdef TLOG_TRACE
 	template<> TINLINE void Logger::log<logLevel::TTRACE>(const str<cv> &message) const
 	{
 		*logFile << "[TRACE]: " << message << "\n";
-		Platform::consoleWrite("[TRACE]: " + message + "\n", TGREY);
+		Platform::consoleWrite("[TRACE]: " + message + "\n", color::TGREY);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TTRACE>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[TRACE]: " + message + "\n", TGREY);
+		Platform::consoleWriteError("[TRACE]: " + message + "\n", color::TGREY);
 	}
 #endif
 

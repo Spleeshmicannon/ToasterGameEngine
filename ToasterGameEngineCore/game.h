@@ -27,7 +27,7 @@ namespace toast
 	public:
 		virtual config init() = 0;
 		virtual bool start() = 0;
-		virtual bool update() = 0;
+		virtual bool update(float deltaTime) = 0;
 		virtual TINLINE ~Game() = 0;
 	};
 

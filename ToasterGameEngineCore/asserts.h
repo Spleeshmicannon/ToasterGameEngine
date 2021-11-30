@@ -2,20 +2,23 @@
 #include "macros.h"
 #include "types/primitive.h"
 #include "types/string.h"
-#include "platform.h"
+#include "platform/platform.h"
 
 namespace toast
 {
-#ifdef TOAST_ASSERT
+#ifdef TASSERT_ENABLED
 	TINLINE static void assert(b8 expr)
 	{
 		if (!expr)
 		{
+			const str<cv> file = __FILE__;
+			const str<cv> line = std::to_string(__LINE__);
+
 			Platform::consoleWriteError(
 				"Assertion failure: \nFile: " +
-				__FILE__ + "\nLine: " + __LINE__ + "\n",
-				TRED
-			)
+				file + "\nLine: " + line + "\n",
+				color::TRED
+			);
 		}
 	}
 
@@ -23,25 +26,31 @@ namespace toast
 	{
 		if (!expr)
 		{
+			const str<cv> file = __FILE__;
+			const str<cv> line = std::to_string(__LINE__);
+
 			Platform::consoleWriteError(
 				"Assertion failure: \nFile: " +
-				__FILE__ + "\nLine: " + __LINE__ +
+				file + "\nLine: " + line +
 				"\nMessage: " + message,
-				TRED
-			)
+				color::TRED
+			);
 		}
 	}
 
-#ifdef TOAST_ASSERT_DEBUG
+#ifdef TASSERT_ENABLED_DEBUG
 	TINLINE static void debug_assert(b8 expr)
 	{
 		if (!expr)
 		{
+			const str<cv> file = __FILE__;
+			const str<cv> line = std::to_string(__LINE__);
+
 			Platform::consoleWriteError(
 				"Assertion failure: \nFile: " +
-				__FILE__ + "\nLine: " + __LINE__ + "\n",
-				TRED
-			)
+				file + "\nLine: " + line + "\n",
+				color::TRED
+			);
 		}
 	}
 #else

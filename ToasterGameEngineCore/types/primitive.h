@@ -52,5 +52,6 @@ namespace toast
 	typedef bool b8;
 	
 	// other
-	typedef void* ptr;
+	typedef void* ptr; // dynamic pointer
+	typedef int lsn; // listener
 }
