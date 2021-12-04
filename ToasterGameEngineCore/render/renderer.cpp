@@ -35,8 +35,16 @@ namespace toast
 
 	struct vulkanDevice
 	{
+		// main structs
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
+
+		// logical device stuff
+		VkQueue graphicsQue;
+		VkQueue presentQue;
+		VkQueue transferQue;
+
+		// physical device stuff
 		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceFeatures feat;
@@ -437,8 +445,33 @@ namespace toast
 
 		Logger::staticLog<logLevel::TDEBUG>("Logical Device created");
 
+		// get queues
+		vkGetDeviceQueue(
+			device->logicalDevice,
+			device->graphicsIndex,
+			0,
+			&device->graphicsQue
+		);
+
+		//vkGetDeviceQueue(
+		//	device->logicalDevice,
+		//	device->transferIndex,
+		//	0,
+		//	&device->transferQue
+		//);
+
+		vkGetDeviceQueue(
+			device->logicalDevice,
+			device->presentIndex,
+			0,
+			&device->presentQue
+		);
+
+		Logger::staticLog<logLevel::TDEBUG>("Device Queues obtained");
+
 		deallocate<VkDeviceQueueCreateInfo>(queCreateInfos);
 		deallocate<u32>(indices);
+
 		return true;
 	}
 
@@ -450,7 +483,21 @@ namespace toast
 	}
 
 	Renderer::~Renderer()
-	{}
+	{
+		deallocate<vulkanContext>(context);
+
+		if (device->swapSupp.formats != nullptr)
+		{
+			deallocate<VkSurfaceFormatKHR>(device->swapSupp.formats);
+		}
+
+		if (device->swapSupp.presentModes != nullptr)
+		{
+			deallocate<VkPresentModeKHR>(device->swapSupp.presentModes);
+		}
+
+		deallocate<vulkanDevice>(device);
+	}
 
 	b8 Renderer::initialise(const str<cv> appName, platformState* _platState)
 	{
@@ -503,20 +550,19 @@ namespace toast
 
 	b8 Renderer::shutdown()
 	{
-		vkDestroyInstance(context->instance, context->allocator);
-		deallocate<vulkanContext>(context);
-		
-		if (device->swapSupp.formats != nullptr)
+		device->graphicsQue = 0;
+		device->presentQue = 0;
+		device->transferQue = 0;
+
+		if (device->logicalDevice != nullptr)
 		{
-			deallocate<VkSurfaceFormatKHR>(device->swapSupp.formats);
-		}
-		
-		if (device->swapSupp.presentModes != nullptr)
-		{
-			deallocate<VkPresentModeKHR>(device->swapSupp.presentModes);
+			vkDestroyDevice(device->logicalDevice, context->allocator);
+			device->logicalDevice = 0;
 		}
 
-		deallocate<vulkanDevice>(device);
+		device->physicalDevice = 0;
+	
+		vkDestroyInstance(context->instance, context->allocator);
 
 		return true;
 	}
