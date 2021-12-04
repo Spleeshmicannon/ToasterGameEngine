@@ -2,6 +2,7 @@
 #include "macros.h"
 #include "types/primitive.h"
 #include "platform/platform.h"
+#include "logger.h"
 
 namespace toast
 {
@@ -38,19 +39,25 @@ namespace toast
 	TINLINE void tdelete(T* block)
 	{
 		block->~T();
-		Platform::deallocate(block, false);
+		if (!Platform::deallocate(block, false))
+		{
+			Logger::staticLog<logLevel::TERROR>("deallocation not successful");
+		}
 	}
 
 	template<typename T>
 	TINLINE T* allocate(u64 length)
 	{
-		return reinterpret_cast<T*>(Platform::allocate(length *sizeof(T), false));
+
+		void* buffer = Platform::allocate(length * sizeof(T), false);
+		return reinterpret_cast<T*>(buffer);
 	}
 
 	template<typename T>
 	TINLINE T* allocate()
 	{
-		return reinterpret_cast<T*>(Platform::allocate(sizeof(T), false));
+		void* buffer = Platform::allocate(sizeof(T), false);
+		return reinterpret_cast<T*>(buffer);
 	}
 
 	template<typename T>

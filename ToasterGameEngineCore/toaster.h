@@ -19,14 +19,11 @@ namespace toast
 	/// <returns></returns>
 	int tmain(Game & usrGame)
 	{
-		Application app;
-
-
 		// initialisation
-		if (app.create(usrGame))
+		if (Application::create(usrGame))
 		{
 			// game loop
-			if (!app.runLoop(usrGame))
+			if (!Application::runLoop(usrGame))
 			{
 				return 2;
 			}

@@ -10,10 +10,9 @@ namespace toast
 
 	Logger::~Logger()
 	{
-		*logFile << "\n-------------------- session closed --------------------\n\n";
-
 		if (logFile->is_open())
 		{
+			*logFile << "\n-------------------- session closed --------------------\n\n";
 			logFile->close();
 		}
 

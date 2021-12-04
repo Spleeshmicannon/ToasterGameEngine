@@ -30,6 +30,7 @@ namespace toast
 
 		b8 createSurface();
 		b8 setupDevice();
+		b8 createLogicalDevice();
 
 	public:
 		Renderer();

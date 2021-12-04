@@ -13,9 +13,19 @@
 #include "../containers.h"
 #include "../types/string.h"
 #include "../platform/platformState.h"
+#include "../types/string.h"
 
 namespace toast
 {
+	struct vulknSwapchainSupportInfo
+	{
+		VkSurfaceCapabilitiesKHR capabilites;
+		u32 formatCount;
+		VkSurfaceFormatKHR* formats;
+		u32 presentModeCount;
+		VkPresentModeKHR* presentModes;
+	};
+
 	struct vulkanContext
 	{
 		VkInstance instance;
@@ -27,6 +37,11 @@ namespace toast
 	{
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
+		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
+		VkPhysicalDeviceProperties props;
+		VkPhysicalDeviceFeatures feat;
+		VkPhysicalDeviceMemoryProperties mem;
+		vulknSwapchainSupportInfo swapSupp;
 	};
 
 	struct vulkanDeviceRequirements
@@ -37,15 +52,6 @@ namespace toast
 	struct vulkanPhysDeviceQueFamInfo
 	{
 		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
-	};
-
-	struct vulknSwapchainSupportInfo
-	{
-		VkSurfaceCapabilitiesKHR capabilites;
-		u32 formatCount;
-		VkSurfaceFormatKHR* formats;
-		u32 presentModeCount;
-		VkPresentModeKHR* presetnModes;
 	};
 
 	TINLINE void checkVulkan(VkResult sym)
@@ -80,10 +86,42 @@ namespace toast
 		return true;
 	}
 #endif
-	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice physcialDevice,
+	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice device,
 		VkSurfaceKHR surface, vulknSwapchainSupportInfo * outSuppInfo)
 	{
+		checkVulkan(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+			&outSuppInfo->capabilites));
 
+		checkVulkan(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
+			&outSuppInfo->formatCount, 0));
+
+		if (outSuppInfo->formatCount != 0)
+		{
+			if (outSuppInfo->formats == nullptr)
+			{
+				outSuppInfo->formats = allocate<VkSurfaceFormatKHR>();
+			}
+
+			checkVulkan(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
+				&outSuppInfo->formatCount, outSuppInfo->formats));
+		}
+
+		checkVulkan(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, 
+			&outSuppInfo->presentModeCount, 0));
+
+		if (outSuppInfo->presentModeCount != 0)
+		{
+			if (outSuppInfo->presentModes == nullptr)
+			{
+				outSuppInfo->presentModes = allocate<VkPresentModeKHR>();
+			}
+
+			checkVulkan(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+				&outSuppInfo->presentModeCount, outSuppInfo->presentModes));
+		}
+
+
+		return true;
 	}
 
 
@@ -170,7 +208,66 @@ namespace toast
 			(!dreq.transfer || (dreq.transfer && outQue->transferIndex != -1)))
 		{
 			Logger::staticLog<logLevel::TINFO>("Device meets queue requirements");
-			return true;
+			if (vulkanDeviceQuerySwapchainSupport(device, surface, outSInfo))
+			{
+				if (outSInfo->formatCount < 0 || outSInfo->presentModeCount < 0)
+				{
+					if (outSInfo->formats != nullptr)
+					{
+						deallocate<VkSurfaceFormatKHR>(outSInfo->formats);
+					}
+
+					if (outSInfo->presentModes != nullptr)
+					{
+						deallocate<VkPresentModeKHR>(outSInfo->presentModes);
+					}
+
+					Logger::staticLog<logLevel::TINFO>("swapchain support not present, not using device");
+					return false;
+				}
+			}
+
+			// device related extensions
+			constexpr u8 extCount = 1;
+			const cv* extNames[extCount] =
+			{
+				VK_KHR_SWAPCHAIN_EXTENSION_NAME
+			};
+
+			u32 avaExtCount = 0;
+			checkVulkan(vkEnumerateDeviceExtensionProperties(device, NULL, 
+				&avaExtCount, NULL));
+
+			if (avaExtCount != 0)
+			{
+				VkExtensionProperties* availableExts = allocate<VkExtensionProperties>(avaExtCount);
+				checkVulkan(vkEnumerateDeviceExtensionProperties(device, NULL,
+					&avaExtCount, availableExts));
+
+				for (u32 i = 0; i < extCount; ++i)
+				{
+					b8 found = false;
+					for (u32 j = 0; j < avaExtCount; ++j)
+					{
+						if (cStrEqual<sizeof(extNames[i])>(extNames[i], availableExts[j].extensionName))
+						{
+							found = true;
+							break;
+						}
+					}
+
+					if (!found)
+					{
+						Logger::staticLog<logLevel::TINFO>("Could not find required extensions");
+						deallocate<VkExtensionProperties>(availableExts);
+						return false;
+					}
+				}
+
+				deallocate<VkExtensionProperties>(availableExts);
+
+				return true;
+			}
 		}
 
 		return false;
@@ -215,29 +312,141 @@ namespace toast
 			req.samplerAnisotropy = true;
 			req.discreteGpu = true;
 
-			// device related extensions
-			constexpr u8 extCount = 1;
-			const cv* extNames[extCount] =
+			vulknSwapchainSupportInfo swapSupInfo = {}; // zeroing out memory
+			vulkanPhysDeviceQueFamInfo queFamInfo = {};
+
+			if (physicalDeviceMeetsRequirements(physicalDevices[i], context->surface, props, feat, req,
+				&swapSupInfo, &queFamInfo))
 			{
-				VK_KHR_SWAPCHAIN_EXTENSION_NAME
-			};
+				const str<cv> deviceName = props.deviceName;
+				Logger::staticLog<logLevel::TINFO>("chosen device: " + deviceName);
 
-			vulknSwapchainSupportInfo swapSupInfo;
-			vulkanPhysDeviceQueFamInfo queFamInfo;
+				Logger::staticLog<logLevel::TINFO>("GPU driver version: " +
+					std::to_string(VK_VERSION_MAJOR(props.driverVersion)) + "." +
+					std::to_string(VK_VERSION_MINOR(props.driverVersion)) + "." +
+					std::to_string(VK_VERSION_PATCH(props.driverVersion)));
 
-			physicalDeviceMeetsRequirements(physicalDevices[i], context->surface, props, feat, req,
-				&swapSupInfo, &queFamInfo);
+				Logger::staticLog<logLevel::TINFO>("Vulkan API version: " +
+					std::to_string(VK_VERSION_MAJOR(props.apiVersion)) + "." +
+					std::to_string(VK_VERSION_MINOR(props.apiVersion)) + "." +
+					std::to_string(VK_VERSION_PATCH(props.apiVersion)));
+				
+				for (u32 j = 0; j < memProps.memoryHeapCount; ++j)
+				{
+					f32 memSizeGb = (((f32)memProps.memoryHeaps[j].size) 
+						/ 1024.0f / 1024.0f / 1024.0f);
+					if (memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+					{
+						Logger::staticLog<logLevel::TINFO>("Local GPU memory: " + 
+							std::to_string(memSizeGb) + " GiB");
+					}
+					else
+					{
+						Logger::staticLog<logLevel::TINFO>("Shared System memory: " +
+							std::to_string(memSizeGb) + " GiB");
+					}
+				}
+				
+				// storing physical device data
+				device->physicalDevice = physicalDevices[i];
+				device->graphicsIndex = queFamInfo.graphicsIndex;
+				device->presentIndex = queFamInfo.presentIndex;
+				device->transferIndex = queFamInfo.transferIndex;
+				device->props = props;
+				device->feat = feat;
+				device->mem = memProps;
+				device->swapSupp = swapSupInfo;
+
+				break;
+			}
 		}
 
 		return true;
 	}
 
+	b8 Renderer::createLogicalDevice()
+	{
+		const b8 presentSharesGraphicsQue = device->graphicsIndex == device->presentIndex;
+		const b8 transferSharesGraphicsQue = device->graphicsIndex == device->transferIndex;
+
+		u32 indexCount = 1;
+
+		if (!presentSharesGraphicsQue)
+		{
+			++indexCount;
+		}
+
+		if (!transferSharesGraphicsQue)
+		{
+			++indexCount;
+		}
+
+		u32* indices = allocate<u32>(indexCount);
+		u8 index = 1;
+
+		indices[index] = device->graphicsIndex;
+
+		if (!presentSharesGraphicsQue)
+		{
+			indices[++index] = device->presentIndex;
+		}
+
+		if (!transferSharesGraphicsQue)
+		{
+			indices[++index] = device->transferIndex;
+		}
+
+		VkDeviceQueueCreateInfo* queCreateInfos = allocate<VkDeviceQueueCreateInfo>(indexCount);
+		for (u32 i = 0; i < indexCount; ++i)
+		{
+			queCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queCreateInfos[i].queueFamilyIndex = indices[i];
+			queCreateInfos[i].queueCount = 1;
+			
+			if (indices[i] == device->graphicsIndex)
+			{
+				queCreateInfos[i].queueCount = 2;
+			}
+
+			queCreateInfos[i].flags = 0;
+			queCreateInfos[i].pNext = 0;
+
+			f32 quePriority = 1.0f;
+
+			queCreateInfos[i].pQueuePriorities = &quePriority;
+		}
+
+		VkPhysicalDeviceFeatures deviceFeat = {};
+		deviceFeat.samplerAnisotropy = VK_TRUE;
+		
+		VkDeviceCreateInfo deviceCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+		deviceCreateInfo.queueCreateInfoCount = indexCount;
+		deviceCreateInfo.pQueueCreateInfos = queCreateInfos;
+		deviceCreateInfo.pEnabledFeatures = &deviceFeat;
+		deviceCreateInfo.enabledExtensionCount = 1;
+		const char* extensionNames = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+		deviceCreateInfo.ppEnabledExtensionNames = &extensionNames;
+
+		// actually create the logical device
+		checkVulkan(vkCreateDevice(
+			device->physicalDevice,
+			&deviceCreateInfo,
+			context->allocator,
+			&device->logicalDevice
+		));
+
+		Logger::staticLog<logLevel::TDEBUG>("Logical Device created");
+
+		deallocate<VkDeviceQueueCreateInfo>(queCreateInfos);
+		deallocate<u32>(indices);
+		return true;
+	}
+
 	Renderer::Renderer()
 	{
-		
 		platState = nullptr;
-		context = allocate<vulkanContext>(1);
-		device = allocate<vulkanDevice>(1);
+		context = allocate<vulkanContext>();
+		device = allocate<vulkanDevice>();
 	}
 
 	Renderer::~Renderer()
@@ -286,13 +495,29 @@ namespace toast
 		// setting up device related stuff (i.e. selecting a GPU device)
 		if (!setupDevice()) return false;
 
+		// creating the logical device
+		if (!createLogicalDevice()) return false;
+
 		return true;
 	}
 
 	b8 Renderer::shutdown()
 	{
 		vkDestroyInstance(context->instance, context->allocator);
-		tdelete<vulkanContext>(context);
+		deallocate<vulkanContext>(context);
+		
+		if (device->swapSupp.formats != nullptr)
+		{
+			deallocate<VkSurfaceFormatKHR>(device->swapSupp.formats);
+		}
+		
+		if (device->swapSupp.presentModes != nullptr)
+		{
+			deallocate<VkPresentModeKHR>(device->swapSupp.presentModes);
+		}
+
+		deallocate<vulkanDevice>(device);
+
 		return true;
 	}
 

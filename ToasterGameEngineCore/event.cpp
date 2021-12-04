@@ -22,8 +22,13 @@ namespace toast
 		eventCodeEntry registered[TOAST_MAX_MESSAGE_CODES];
 	};
 
-	EventManager::EventManager() : state(allocate<eventState>(1))
-	{}
+	EventManager::EventManager() : state(allocate<eventState>())
+	{
+		for (i32 i = 0; i < TOAST_MAX_MESSAGE_CODES; ++i)
+		{
+			state->registered[i].events = nullptr;
+		}
+	}
 
 	EventManager::~EventManager()
 	{
@@ -31,7 +36,7 @@ namespace toast
 		{
 			if (state->registered[i].events != nullptr)
 			{
-				tdelete<std::vector<registeredEvent>>(state->registered[i].events);
+				tdelete<vector<registeredEvent>>(state->registered[i].events);
 			}
 		}
 
@@ -41,12 +46,11 @@ namespace toast
 	b8 EventManager::registerEvent(eventCode code, ptr listener,
 		func<b8, eventCode, ptr, ptr, eventContext> onEvent)
 	{
-
 		// allocating any necessary new memory
 		if (state->registered[static_cast<u16>(code)].events == nullptr)
 		{
 			state->registered[static_cast<u16>(code)].events =
-				tnew<std::vector<registeredEvent>>();
+				tnew<vector<registeredEvent>>();
 		}
 		
 		// checking for duplicate listener

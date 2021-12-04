@@ -4,6 +4,8 @@
 #include "memory.h"
 #include "clock.h"
 #include "render/renderer.h"
+#include "containers.h"
+#include "types/time.h"
 
 namespace toast
 {
@@ -27,6 +29,21 @@ namespace toast
 		// setup variables
 		running = false;
 		suspended = false;
+
+		Logger::staticLog<logLevel::TDEBUG>("internals size: " + 
+			std::to_string(sizeof(applicationInternals)) + " bytes");
+
+		if (!Platform::createHeap())
+		{
+			Logger::staticLog<logLevel::TFATAL>(
+				"Heap could not be created, cannot allocate memory");
+			return false;
+		}
+		else
+		{
+			Logger::staticLog<logLevel::TTRACE>(
+				"Heap created successfully");
+		}
 
 		// sets up a bunch subsystems implicitly here
 		internals = tnew<applicationInternals>();
@@ -99,7 +116,10 @@ namespace toast
 				internals->logger.log<toast::logLevel::TFATAL>("Could not connect to X server");
 				return false;
 #endif
-			default: break;
+			default: 
+				internals->logger.log<toast::logLevel::TWARN>(
+					"Unhandled error");
+				break;
 		}
 
 		// starting renderer before user code but after platform
@@ -201,6 +221,7 @@ namespace toast
 
 		// calling shutdown functions
 		internals->platform.shutdown();
+		internals->renderer.shutdown();
 
 		// deallocating memory and calling destructors
 		tdelete<applicationInternals>(internals);
@@ -211,6 +232,8 @@ namespace toast
 			internals->logger.log<logLevel::TFATAL>(
 				"Input shutdown failed");
 		}
+
+		Platform::destroyHeap();
 
 		return true;
 	}

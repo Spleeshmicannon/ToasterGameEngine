@@ -6,12 +6,6 @@
 #ifdef TWIN32
 #include <windows.h>
 #include <windowsx.h>
-#elif defined(TLINUX)
-
-#elif defined(TAPPLE)
-#error "no apple support, sorry :("
-#else
-#error "unkown/unsupported platform"
 #endif
 
 namespace toast
@@ -27,6 +21,14 @@ namespace toast
 	};
 
 	struct platformState;
+	//struct memoryState;
+
+	struct TEXPORT platformInfo
+	{
+		u8 processCount;
+		u16 processArch;
+		u64 processType;
+	};
 
 	/// <summary>
 	/// Class for static use only. Essentially a glorified namespace,
@@ -37,6 +39,13 @@ namespace toast
 	public:
 		// the internal state of the platform
 		platformState* state;
+
+		// useful info
+		static platformInfo info;
+
+	private:
+		// memory allocator variables
+		//static memoryState * memState;
 
 		// time based variables
 #ifdef TWIN32
@@ -56,11 +65,13 @@ namespace toast
 		static bitmask regex(bitmask params,
 			const char str1[size], const char str2[size]);*/
 
-		TEXPORT static void* allocate(u64 size, b8 aligned);
-		TEXPORT static void deallocate(void* block, b8 aligned);
-		TEXPORT static void* zeroMem(void* block, u64 size);
-		TEXPORT static void* copyMem(void* dest, void* source, u64 size);
-		TEXPORT static void* setMem(void* dest, i32 value, u64 size);
+		TEXPORT static b8 createHeap();
+		TEXPORT static ptr allocate(u64 size, b8 aligned);
+		TEXPORT static b8 deallocate(void* block, b8 aligned);
+		TEXPORT static ptr zeroMem(void* block, u64 size);
+		TEXPORT static ptr copyMem(void* dest, void* source, u64 size);
+		TEXPORT static ptr setMem(void* dest, i32 value, u64 size);
+		TEXPORT static b8 destroyHeap();
 
 		TEXPORT static void consoleWrite(const str<cv> &message, const color color);
 		TEXPORT static void consoleWriteError(const str<cv> &message, const color color);

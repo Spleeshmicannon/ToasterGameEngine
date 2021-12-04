@@ -24,40 +24,52 @@ namespace toast
 {
 #ifdef TWIN32
 
+	struct memoryState
+	{
+		u64 pageSize;
+		HANDLE hndHeap;
+	};
+
 	// time based variables
 	f64 Platform::clockFreq;
 	LARGE_INTEGER Platform::startTime;
 
+	// other statics
+	platformInfo Platform::info;
+	//memoryState* Platform::memState;
+
 	LRESULT CALLBACK WIN32_processMessage(HWND hwnd, u32 msg,
 		WPARAM wparam, LPARAM lparam);
 
-	Platform::Platform() : state(new platformState)
+	Platform::Platform() : state(nullptr)
 	{}
 
 	err Platform::start(const str<cv>& name,
 		i32 x, i32 y, i32 width, i32 height)
 	{
+		state = (platformState*)allocate(sizeof(platformState), false);
 
 		state->hinst = GetModuleHandleA(0);
 
 		HICON icon = LoadIcon(state->hinst, IDI_APPLICATION);
-		WNDCLASSA wc;
-		memset(&wc, 0, sizeof(wc));
-
-		wc.style = CS_DBLCLKS;
-		wc.lpfnWndProc = WIN32_processMessage;
-		wc.cbClsExtra = 0;
-		wc.cbWndExtra = 0;
-		wc.hInstance = state->hinst;
-		wc.hIcon = icon;
-		wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-		wc.hbrBackground = NULL;
-		wc.lpszClassName = "toast_window_class";
-
-		if (!RegisterClassA(&wc))
+		WNDCLASSA * wc = (WNDCLASSA*)allocate(sizeof(WNDCLASSA), false);
+		if (wc == NULL)
 		{
-			MessageBoxA(0, "Window registration failed", "Error",
-				MB_ICONEXCLAMATION | MB_OK);
+			return -1;
+		}
+
+		wc->style = CS_DBLCLKS;
+		wc->lpfnWndProc = WIN32_processMessage;
+		wc->cbClsExtra = 0;
+		wc->cbWndExtra = 0;
+		wc->hInstance = state->hinst;
+		wc->hIcon = icon;
+		wc->hCursor = LoadCursor(NULL, IDC_ARROW);
+		wc->hbrBackground = NULL;
+		wc->lpszClassName = "toast_window_class";
+
+		if (!RegisterClassA(wc))
+		{
 			return 1;
 		}
 
@@ -92,8 +104,6 @@ namespace toast
 
 		if (handle == 0)
 		{
-			MessageBoxA(0, "Window creation failed", "Error: ",
-				MB_ICONEXCLAMATION | MB_OK);
 			return 2;
 		}
 		else
@@ -105,6 +115,8 @@ namespace toast
 		const i32 showWindowCommandFlags = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
 
 		ShowWindow(state->hwnd, showWindowCommandFlags);
+
+		deallocate(wc, false);
 
 		// clock setup
 		LARGE_INTEGER freq;
@@ -141,30 +153,46 @@ namespace toast
 		return true;
 	}
 
-	void* Platform::allocate(u64 size, b8 aligned)
+	b8 Platform::createHeap()
 	{
-		return HeapAlloc(GetProcessHeap(), 
-			HEAP_ZERO_MEMORY | HEAP_NO_SERIALIZE, size);
+		// getting system info
+		SYSTEM_INFO sysInfo;
+		GetSystemInfo(&sysInfo);
+		info.processCount = sysInfo.dwNumberOfProcessors;
+		info.processType = sysInfo.dwProcessorType;
+		info.processArch = sysInfo.wProcessorArchitecture;
+
+		return true;
 	}
 
-	void Platform::deallocate(void* block, b8 aligned)
+	ptr Platform::allocate(u64 size, b8 aligned)
 	{
-		HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, block);
+		return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY | HEAP_NO_SERIALIZE, size);
 	}
 
-	void* Platform::zeroMem(void* block, u64 size)
+	b8 Platform::deallocate(void* block, b8 aligned)
+	{
+		return HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, block) != 0;
+	}
+
+	ptr Platform::zeroMem(void* block, u64 size)
 	{
 		return memset(block, 0, size);
 	}
 
-	void* Platform::copyMem(void* dest, void* source, u64 size)
+	ptr Platform::copyMem(void* dest, void* source, u64 size)
 	{
 		return memcpy(dest, source, size);
 	}
 
-	void* Platform::setMem(void* dest, i32 value, u64 size)
+	ptr Platform::setMem(void* dest, i32 value, u64 size)
 	{
 		return memset(dest, value, size);
+	}
+
+	b8 Platform::destroyHeap()
+	{
+		return true;
 	}
 
 	void Platform::consoleWrite(const str<cv> &message, const color color)
@@ -516,28 +544,38 @@ namespace toast
 		return !quit_flagged;
 	}
 
-
-	void* Platform::allocate(u64 size, b8 aligned)
+	b8 Platform::createHeap()
 	{
-		return malloc(size);
+		return true;
 	}
 
-	void Platform::deallocate(void* block, b8 aligned)
+	b8 Platform::destroyHeap()
+	{
+		return true;
+	}
+
+	ptr Platform::allocate(u64 size, b8 aligned)
+	{
+		return memset(malloc(size), 0, size);
+	}
+
+	b8 Platform::deallocate(void* block, b8 aligned)
 	{
 		free(block);
+		return true;
 	}
 
-	void* Platform::zeroMem(void* block, u64 size)
+	ptr Platform::zeroMem(void* block, u64 size)
 	{
 		return memset(block, 0, size);
 	}
 
-	void* Platform::copyMem(void* dest, void* source, u64 size)
+	ptr Platform::copyMem(void* dest, void* source, u64 size)
 	{
 		return memcpy(dest, source, size);
 	}
 
-	void* Platform::setMem(void* dest, i32 value, u64 size)
+	ptr Platform::setMem(void* dest, i32 value, u64 size)
 	{
 		return memset(dest, value, size);
 	}
