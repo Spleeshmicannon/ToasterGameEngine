@@ -3,6 +3,7 @@
 #include "types/primitive.h"
 #include "platform/platform.h"
 #include "logger.h"
+#include <cstdlib>
 
 namespace toast
 {
@@ -21,19 +22,12 @@ namespace toast
 	}
 
 	template<class T>
-	TINLINE T* tnew(T &inst)
+	TINLINE T* tnew(const T& inst)
 	{
 		void* buffer = Platform::allocate(sizeof(T), false);
-		return reinterpret_cast<T*>(new(buffer) T(inst));
+		*buffer = inst;
+		return buffer;
 	}
-
-	template<class T>
-	TINLINE T* tnew(T&& inst)
-	{
-		void* buffer = Platform::allocate(sizeof(T), false);
-		return reinterpret_cast<T*>(new(buffer) T(inst));
-	}
-
 
 	template<class T>
 	TINLINE void tdelete(T* block)

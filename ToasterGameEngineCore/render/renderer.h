@@ -16,6 +16,8 @@ namespace toast
 	struct vulkanContext;
 	struct vulkanDevice;
 
+	class Swapchain;
+
 	class Renderer
 	{
 	private:

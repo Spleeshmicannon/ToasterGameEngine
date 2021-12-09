@@ -14,7 +14,8 @@ find_package(Vulkan REQUIRED)
 
 # Add source to this project's executable.
 add_library (ToasterGameEngineCore SHARED
-"application.cpp" "platform/platform.cpp" "logger.cpp" "event.cpp" "input.cpp" "render/renderer.cpp" "clock.cpp" "platform/platformState.h" "types/thread.h")
+"application.cpp" "platform/platform.cpp" "logger.cpp" "event.cpp" "input.cpp" 
+"render/renderer.cpp" "clock.cpp" "platform/platformState.h"  )
 
 # TODO: Add tests and install targets if needed.
 target_include_directories(ToasterGameEngineCore PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}  "${sourceDir}/out/install/${presetName}/toasterTest")

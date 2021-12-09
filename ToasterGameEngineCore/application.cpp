@@ -26,12 +26,15 @@ namespace toast
 
 	b8 Application::create(Game& usrGame)
 	{
+#ifndef TOAST_RELEASE
+		auto start = chrono::hrc::now();
+
+		Logger::staticLog<logLevel::TDEBUG>("internals size: " +
+			std::to_string(sizeof(applicationInternals)) + " bytes");
+#endif
 		// setup variables
 		running = false;
 		suspended = false;
-
-		Logger::staticLog<logLevel::TDEBUG>("internals size: " + 
-			std::to_string(sizeof(applicationInternals)) + " bytes");
 
 		if (!Platform::createHeap())
 		{
@@ -76,6 +79,7 @@ namespace toast
 				"Input initialised successfully");
 		}
 
+		// registering some sample events, will probably be changed eventually
 		internals->eventManager.registerEvent(eventCode::APPLICATION_QUIT,
 			0, onEvent);
 		internals->eventManager.registerEvent(eventCode::KEY_PRESSED,
@@ -145,6 +149,15 @@ namespace toast
 
 		running = true;
 
+#ifndef TOAST_RELEASE
+		Logger::staticLog<logLevel::TINFO>(
+			"Application start time: " + 
+			std::to_string(
+				chrono::duration(chrono::hrc::now() - start).count()
+			)
+		);
+#endif
+
 		return true;
 	}
 
@@ -178,8 +191,7 @@ namespace toast
 			if(!suspended)
 			{
 				internals->clock.update();
-				const f64 currTime = internals->clock.elapsed;
-				const f64 delta = (currTime - internals->lastTime);
+				const f64 delta = (internals->clock.elapsed - internals->lastTime);
 				const f64 frameStartTime = Platform::getAbsTime();
 
 				if (!internals->platform.pumpMessages())
@@ -236,6 +248,11 @@ namespace toast
 		Platform::destroyHeap();
 
 		return true;
+	}
+
+	void Application::debugLog(const char* message)
+	{
+		internals->logger.log<logLevel::TUSER_DEBUG>(message);
 	}
 
 	b8 Application::onEvent(eventCode code, ptr sender, ptr listener, eventContext context)

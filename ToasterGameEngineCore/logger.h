@@ -13,6 +13,13 @@
 #define TLOG_INFO
 #define TLOG_DEBUG
 #define TLOG_TRACE
+#define TLOG_USER_DEBUG
+
+// I know this probably isn't the best
+// but I think it's neater
+#ifdef GAME_RELEASE
+#undef TLOG_USER_DEBUG
+#endif
 
 #ifdef TOAST_RELEASE
 #undef TLOG_DEBUG
@@ -31,7 +38,8 @@ namespace toast
 		TWARN = 2,
 		TINFO = 3,
 		TDEBUG = 4,
-		TTRACE = 5
+		TTRACE = 5,
+		TUSER_DEBUG = 6
 	};
 
 	/// <summary>
@@ -169,6 +177,18 @@ namespace toast
 	template<> TINLINE void Logger::staticLog<logLevel::TTRACE>(const str<cv>& message)
 	{
 		Platform::consoleWriteError("[TRACE]: " + message + "\n", color::TGREY);
+	}
+#endif
+#ifdef TLOG_USER_DEBUG
+	template<> TINLINE void Logger::log<logLevel::TUSER_DEBUG>(const str<cv>& message) const
+	{
+		*logFile << "[USER_DEBUG]: " << message << "\n";
+		Platform::consoleWrite("[USER_DEBUG]: " + message + "\n", color::TGREY);
+	}
+
+	template<> TINLINE void Logger::staticLog<logLevel::TUSER_DEBUG>(const str<cv>& message)
+	{
+		Platform::consoleWriteError("[USER_DEBUG]: " + message + "\n", color::TGREY);
 	}
 #endif
 

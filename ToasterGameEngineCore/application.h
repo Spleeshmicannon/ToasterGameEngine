@@ -30,5 +30,6 @@ namespace toast
 
 		static b8 create(Game &usrGame);
 		static b8 runLoop(Game &usrGame);
+		static void debugLog(const char* message);
 	};
 }

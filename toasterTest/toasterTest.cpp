@@ -2,12 +2,14 @@
 //
 
 #include "ToasterGameEngineCore/toaster.h"
+#include "ToasterGameEngineCore/application.h"
 
 class Pong : public toast::Game 
 {
 public:
 	toast::config init() override
 	{
+		//        x     y  width height title
 		return { 100 , 100, 1920, 1080, "Pong" };
 	}
 

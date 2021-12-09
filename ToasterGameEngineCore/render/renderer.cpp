@@ -11,9 +11,9 @@
 #include "../memory.h"
 #include "../logger.h"
 #include "../containers.h"
-#include "../types/string.h"
 #include "../platform/platformState.h"
-#include "../types/string.h"
+
+#define TVK_CLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max : value;
 
 namespace toast
 {
@@ -31,6 +31,8 @@ namespace toast
 		VkInstance instance;
 		VkAllocationCallbacks* allocator;
 		VkSurfaceKHR surface;
+		u16 frameBufferWidth;
+		u16 frameBufferHeight;
 	};
 
 	struct vulkanDevice
@@ -62,12 +64,174 @@ namespace toast
 		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
 	};
 
+	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice device,
+		VkSurfaceKHR surface, vulknSwapchainSupportInfo* outSuppInfo);
+
 	TINLINE void checkVulkan(VkResult sym)
 	{
 #ifndef TOAST_RELEASE
 		if (sym != VK_SUCCESS) Logger::staticLog<logLevel::TINFO>("vulkan failed");
 #endif
 	}
+
+	struct swapchainState
+	{
+		VkSwapchainKHR handle;
+		u8 maxFramesInFlight;
+		u32 imageCount;
+		VkImage* images;
+		VkImageView* views;
+
+	};
+
+	class Swapchain
+	{
+	private:
+		swapchainState * state;
+		VkSurfaceFormatKHR imageFormat;
+
+		TINLINE VkSurfaceFormatKHR _getFormat(VkFormat format, VkColorSpaceKHR colorSpace, 
+			vulkanDevice* device)
+		{
+			for (u32 i = 0; i < device->swapSupp.formatCount; ++i)
+			{
+				if (device->swapSupp.formats[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
+					device->swapSupp.formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+				{
+					return device->swapSupp.formats[i];
+				}
+			}
+
+			return device->swapSupp.formats[0];
+		}
+
+		TINLINE void _create(vulkanContext* context, vulkanDevice* device, 
+			int &width, int &height)
+		{
+			VkExtent2D swapExtent = { width, height };
+
+			if (imageFormat.format == VK_FORMAT_UNDEFINED)
+			{
+				imageFormat = _getFormat(VK_FORMAT_B8G8R8A8_UNORM,
+					VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, device);
+			}
+
+			state = allocate<swapchainState>();
+			state->maxFramesInFlight = 2;
+
+			VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+			for (u32 i = 0; i < device->swapSupp.presentModeCount; ++i)
+			{
+				if (device->swapSupp.presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+				{
+					presentMode = device->swapSupp.presentModes[i];
+					break;
+				}
+			}
+
+			vulkanDeviceQuerySwapchainSupport(
+				device->physicalDevice,
+				context->surface,
+				&device->swapSupp
+			);
+
+			if (device->swapSupp.capabilites.currentExtent.width != UINT32_MAX)
+			{
+				swapExtent = device->swapSupp.capabilites.currentExtent;
+			}
+
+			VkExtent2D min = device->swapSupp.capabilites.minImageExtent;
+			VkExtent2D max = device->swapSupp.capabilites.maxImageExtent;
+
+			swapExtent.width = TVK_CLAMP(swapExtent.width, min.width, max.width);
+			swapExtent.height = TVK_CLAMP(swapExtent.height, min.height, max.height);
+		}
+
+		TINLINE void _destroy()
+		{
+			zeroMem(state, sizeof(state));
+			deallocate<swapchainState>(state);
+		}
+
+	public:
+		Swapchain()
+		{
+			state = nullptr;
+			imageFormat.format = VK_FORMAT_UNDEFINED;
+		}
+
+		void create(vulkanContext* context, vulkanDevice* device, i32 width, i32 height)
+		{
+			_create(context, device, width, height);
+		}
+
+		void recreate(vulkanContext* context, vulkanDevice* device, i32 width, i32 height)
+		{
+			_destroy();
+			_create(context, device, width, height);
+		}
+
+		b8 acquireNextImageIndex(vulkanContext* context, vulkanDevice* device, u64 timeoutNS,
+			VkSemaphore imageAvaiSemaphore, VkFence fence, u32*outImageIndex)
+		{
+			VkResult result = vkAcquireNextImageKHR(
+				device->logicalDevice,
+				state->handle,
+				timeoutNS,
+				imageAvaiSemaphore,
+				fence,
+				outImageIndex
+			);
+
+			if (result == VK_ERROR_OUT_OF_DATE_KHR)
+			{
+				recreate(context, device, context->frameBufferWidth, 
+					context->frameBufferHeight);
+				return false;
+			}
+			else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+			{
+				Logger::staticLog<logLevel::TFATAL>("ACQUIRE NEXT IMAGE FAILED");
+				return false;
+			}
+
+			return true;
+		}
+
+		b8 present(vulkanContext* context, vulkanDevice* device, VkQueue graphicsQue, 
+			VkQueue presentQue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex)
+		{
+			VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &renderCompleteSemaphore;
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &state->handle;
+			presentInfo.pImageIndices = &presentImageIndex;
+			presentInfo.pResults = 0;
+
+			VkResult result = vkQueuePresentKHR(presentQue, &presentInfo);
+
+			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+			{
+				recreate(context, device, context->frameBufferWidth,
+					context->frameBufferHeight);
+				return false;
+			}
+			else if (result != VK_SUCCESS)
+			{
+				Logger::staticLog<logLevel::TFATAL>("failed to present swapchain image");
+				return false;
+			}
+
+
+			return true;
+		}
+
+		~Swapchain()
+		{
+			if (state != nullptr) _destroy();
+		}
+	};
 
 #ifdef TWIN32
 	b8 Renderer::createSurface()
@@ -94,6 +258,7 @@ namespace toast
 		return true;
 	}
 #endif
+
 	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice device,
 		VkSurfaceKHR surface, vulknSwapchainSupportInfo * outSuppInfo)
 	{
@@ -345,12 +510,12 @@ namespace toast
 						/ 1024.0f / 1024.0f / 1024.0f);
 					if (memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
 					{
-						Logger::staticLog<logLevel::TINFO>("Local GPU memory: " + 
+						Logger::staticLog<logLevel::TINFO>("Local GPU memory:  " + 
 							std::to_string(memSizeGb) + " GiB");
 					}
 					else
 					{
-						Logger::staticLog<logLevel::TINFO>("Shared System memory: " +
+						Logger::staticLog<logLevel::TINFO>("Shared Sys memory: " +
 							std::to_string(memSizeGb) + " GiB");
 					}
 				}
@@ -374,8 +539,9 @@ namespace toast
 
 	b8 Renderer::createLogicalDevice()
 	{
-		const b8 presentSharesGraphicsQue = device->graphicsIndex == device->presentIndex;
+		const b8 presentSharesGraphicsQue  = device->graphicsIndex == device->presentIndex;
 		const b8 transferSharesGraphicsQue = device->graphicsIndex == device->transferIndex;
+		const b8 transferSharesPresentQue  = device->presentIndex  == device->transferIndex;
 
 		u32 indexCount = 1;
 
@@ -390,18 +556,18 @@ namespace toast
 		}
 
 		u32* indices = allocate<u32>(indexCount);
-		u8 index = 1;
+		u8 index = 0;
 
-		indices[index] = device->graphicsIndex;
+		indices[index++] = device->graphicsIndex;
 
 		if (!presentSharesGraphicsQue)
 		{
-			indices[++index] = device->presentIndex;
+			indices[index++] = device->presentIndex;
 		}
 
 		if (!transferSharesGraphicsQue)
 		{
-			indices[++index] = device->transferIndex;
+			indices[index++] = device->transferIndex;
 		}
 
 		VkDeviceQueueCreateInfo* queCreateInfos = allocate<VkDeviceQueueCreateInfo>(indexCount);
@@ -453,18 +619,18 @@ namespace toast
 			&device->graphicsQue
 		);
 
-		//vkGetDeviceQueue(
-		//	device->logicalDevice,
-		//	device->transferIndex,
-		//	0,
-		//	&device->transferQue
-		//);
-
 		vkGetDeviceQueue(
 			device->logicalDevice,
 			device->presentIndex,
 			0,
 			&device->presentQue
+		);
+
+		vkGetDeviceQueue(
+			device->logicalDevice,
+			device->transferIndex,
+			0,
+			&device->transferQue
 		);
 
 		Logger::staticLog<logLevel::TDEBUG>("Device Queues obtained");
@@ -558,6 +724,12 @@ namespace toast
 		{
 			vkDestroyDevice(device->logicalDevice, context->allocator);
 			device->logicalDevice = 0;
+		}
+
+		if (context->surface != nullptr)
+		{
+			vkDestroySurfaceKHR(context->instance, context->surface, context->allocator);
+			context->surface = 0;
 		}
 
 		device->physicalDevice = 0;
