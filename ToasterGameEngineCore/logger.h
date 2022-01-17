@@ -182,13 +182,13 @@ namespace toast
 #ifdef TLOG_USER_DEBUG
 	template<> TINLINE void Logger::log<logLevel::TUSER_DEBUG>(const str<cv>& message) const
 	{
-		*logFile << "[USER_DEBUG]: " << message << "\n";
-		Platform::consoleWrite("[USER_DEBUG]: " + message + "\n", color::TGREY);
+		*logFile << "[DEBUG]: " << message << "\n";
+		Platform::consoleWrite("[DEBUG]: " + message + "\n", color::TGREEN);
 	}
 
 	template<> TINLINE void Logger::staticLog<logLevel::TUSER_DEBUG>(const str<cv>& message)
 	{
-		Platform::consoleWriteError("[USER_DEBUG]: " + message + "\n", color::TGREY);
+		Platform::consoleWriteError("[DEBUG]: " + message + "\n", color::TGREEN);
 	}
 #endif
 

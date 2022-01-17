@@ -4,6 +4,7 @@
 #include "platform/platform.h"
 #include "logger.h"
 #include <cstdlib>
+#include <new>
 
 namespace toast
 {
@@ -21,12 +22,11 @@ namespace toast
 		return reinterpret_cast<T*>(new(buffer) T());
 	}
 
-	template<class T>
-	TINLINE T* tnew(const T& inst)
+	template<class T, typename ... ArgT>
+	TINLINE T* tnewConstruct(ArgT... args)
 	{
 		void* buffer = Platform::allocate(sizeof(T), false);
-		*buffer = inst;
-		return buffer;
+		return reinterpret_cast<T*>(new(buffer) T(args...));
 	}
 
 	template<class T>

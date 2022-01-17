@@ -26,15 +26,6 @@ namespace toast
 		VkPresentModeKHR* presentModes;
 	};
 
-	struct vulkanContext
-	{
-		VkInstance instance;
-		VkAllocationCallbacks* allocator;
-		VkSurfaceKHR surface;
-		u16 frameBufferWidth;
-		u16 frameBufferHeight;
-	};
-
 	struct vulkanDevice
 	{
 		// main structs
@@ -46,12 +37,45 @@ namespace toast
 		VkQueue presentQue;
 		VkQueue transferQue;
 
+		// depth format
+		VkFormat depthFormat;
+
 		// physical device stuff
 		u32 graphicsIndex, presentIndex, computeIndex, transferIndex;
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceFeatures feat;
 		VkPhysicalDeviceMemoryProperties mem;
 		vulknSwapchainSupportInfo swapSupp;
+	};
+
+
+	struct vulkanContext
+	{
+		VkInstance instance;
+		VkAllocationCallbacks* allocator;
+		VkSurfaceKHR surface;
+		u16 frameBufferWidth;
+		u16 frameBufferHeight;
+
+		u32 currentFrame;
+
+		i32 findMemIndex(u32 typeBits, u32 propsFlags, vulkanDevice * device)
+		{
+			VkPhysicalDeviceMemoryProperties memProps;
+			vkGetPhysicalDeviceMemoryProperties(device->physicalDevice, &memProps);
+
+			for (u32 i = 0; i < memProps.memoryTypeCount; ++i)
+			{
+				if (typeBits & (1 << i) && 
+					(memProps.memoryTypes[i].propertyFlags & propsFlags) == propsFlags)
+				{
+					return i;
+				}
+			}
+
+			Logger::staticLog<logLevel::TWARN>("unable to find memory type");
+			return -1;
+		}
 	};
 
 	struct vulkanDeviceRequirements
@@ -67,12 +91,131 @@ namespace toast
 	TINLINE b8 vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice device,
 		VkSurfaceKHR surface, vulknSwapchainSupportInfo* outSuppInfo);
 
+	TINLINE b8 detectDeviceDepthFormat(vulkanDevice* device);
+	
+	b8 createImage(
+		vulkanContext* context,
+		vulkanDevice* device,
+		VkImageType imageType,
+		u32 width, u32 height,
+		VkFormat format,
+		VkImageTiling tiling,
+		VkImageUsageFlags usage,
+		VkMemoryPropertyFlags memoryFlags,
+		VkBool32 createView,
+		VkImageAspectFlags viewAspectFlags,
+		vulkanImage* outImage);
+
 	TINLINE void checkVulkan(VkResult sym)
 	{
 #ifndef TOAST_RELEASE
 		if (sym != VK_SUCCESS) Logger::staticLog<logLevel::TINFO>("vulkan failed");
 #endif
 	}
+
+	struct vulkanImage
+	{
+		VkImage handle;
+		VkDeviceMemory memory;
+		VkImageView view;
+		u32 width;
+		u32 height;
+
+		vulkanImage(
+			vulkanContext* context,
+			vulkanDevice* device,
+			VkImageType imageType,
+			u32 _width, u32 _height,
+			VkFormat format,
+			VkImageTiling tiling,
+			VkImageUsageFlags usage,
+			VkMemoryPropertyFlags memoryFlags,
+			VkBool32 createView,
+			VkImageAspectFlags viewAspectFlags)
+		{
+			zeroMem<vulkanImage>(this, 1);
+
+			width = _width;
+			height = _height;
+
+			VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+			imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+			imageCreateInfo.extent.width = _width;
+			imageCreateInfo.extent.height = _height;
+			imageCreateInfo.extent.depth = 1;
+			imageCreateInfo.mipLevels = 4;
+			imageCreateInfo.arrayLayers = 1;
+			imageCreateInfo.format = format;
+			imageCreateInfo.tiling = tiling;
+			imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageCreateInfo.usage = usage;
+			imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+			imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+			checkVulkan(vkCreateImage(device->logicalDevice, &imageCreateInfo, context->allocator,
+				&handle));
+
+			// Query memory requirements
+			VkMemoryRequirements memoryRequirements;
+			vkGetImageMemoryRequirements(device->logicalDevice, handle,
+				&memoryRequirements);
+
+			i32 memoryType = context->findMemIndex(memoryRequirements.memoryTypeBits, memoryFlags, device);
+			if (memoryType == -1)
+			{
+				Logger::staticLog<logLevel::TERROR>(
+					"Required type of memory wasn't found. Image not valid");
+				return;
+			}
+
+			// Allocate memory
+			VkMemoryAllocateInfo memAllocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+			memAllocInfo.allocationSize = memoryRequirements.size;
+			memAllocInfo.memoryTypeIndex = memoryType;
+
+			checkVulkan(vkAllocateMemory(device->logicalDevice, &memAllocInfo, context->allocator,
+				&memory));
+
+			checkVulkan(vkBindImageMemory(device->logicalDevice, handle,
+				memory, NULL));
+
+			// creating image view
+			VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+			viewCreateInfo.image = handle;
+			viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			viewCreateInfo.format = format;
+			viewCreateInfo.subresourceRange.aspectMask = viewAspectFlags;
+
+			viewCreateInfo.subresourceRange.baseMipLevel = 0;
+			viewCreateInfo.subresourceRange.levelCount = 1;
+			viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+			viewCreateInfo.subresourceRange.layerCount = 1;
+
+			checkVulkan(vkCreateImageView(device->logicalDevice, &viewCreateInfo, context->allocator,
+				&view));
+		}
+
+		void close(vulkanContext* context, vulkanDevice* device)
+		{
+			if (view != NULL)
+			{
+				vkDestroyImageView(device->logicalDevice, view, context->allocator);
+				view = 0;
+			}
+
+			if (memory != NULL)
+			{
+				vkFreeMemory(device->logicalDevice, memory, context->allocator);
+				memory = 0;
+			}
+
+			if (handle != NULL)
+			{
+				vkDestroyImage(device->logicalDevice, handle, context->allocator);
+				handle = 0;
+			}
+		}
+	};
 
 	struct swapchainState
 	{
@@ -81,7 +224,7 @@ namespace toast
 		u32 imageCount;
 		VkImage* images;
 		VkImageView* views;
-
+		vulkanImage* depthAttachment;
 	};
 
 	class Swapchain
@@ -145,6 +288,95 @@ namespace toast
 
 			swapExtent.width = TVK_CLAMP(swapExtent.width, min.width, max.width);
 			swapExtent.height = TVK_CLAMP(swapExtent.height, min.height, max.height);
+
+			u32 imageCount = device->swapSupp.capabilites.minImageCount + 1;
+			if (device->swapSupp.capabilites.maxImageCount > 0 &&
+				imageCount > device->swapSupp.capabilites.maxImageCount)
+			{
+				imageCount = device->swapSupp.capabilites.maxImageCount;
+			}
+
+			VkSwapchainCreateInfoKHR swapCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+			swapCreateInfo.surface = context->surface;
+			swapCreateInfo.minImageCount = imageCount;
+			swapCreateInfo.imageFormat = imageFormat.format;
+			swapCreateInfo.imageColorSpace = imageFormat.colorSpace;
+			swapCreateInfo.imageExtent = swapExtent;
+			swapCreateInfo.imageArrayLayers = 1;
+			swapCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+			// setup queue families
+			if (device->graphicsIndex != device->presentIndex)
+			{
+				const u32 queueFamIndicies[] = { device->graphicsIndex,
+					device->presentIndex };
+
+				swapCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+				swapCreateInfo.queueFamilyIndexCount = 2;
+				swapCreateInfo.pQueueFamilyIndices = queueFamIndicies;
+			}
+			else
+			{
+				swapCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+				swapCreateInfo.queueFamilyIndexCount = 0;
+				swapCreateInfo.pQueueFamilyIndices = NULL;
+			}
+
+			swapCreateInfo.preTransform = device->swapSupp.capabilites.currentTransform;
+			swapCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			swapCreateInfo.clipped = VK_TRUE;
+			swapCreateInfo.oldSwapchain = 0;
+
+			context->currentFrame = 0;
+			
+			state->imageCount = 0;
+			checkVulkan(vkGetSwapchainImagesKHR(device->logicalDevice, state->handle, 
+				&state->imageCount, NULL));
+
+			if (state->images == nullptr)
+			{
+				state->images = allocate<VkImage>(state->imageCount);
+			}
+			if (state->views == nullptr)
+			{
+				state->views = allocate<VkImageView>(state->imageCount);
+			}
+
+			checkVulkan(vkGetSwapchainImagesKHR(device->logicalDevice, state->handle,
+				&state->imageCount, state->images));
+
+			// views
+			for (u32 i = 0; i < state->imageCount; ++i)
+			{
+				VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+				viewInfo.image = state->images[i];
+				viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+				viewInfo.format = imageFormat.format;
+				viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				viewInfo.subresourceRange.baseMipLevel = 0;
+				viewInfo.subresourceRange.levelCount = 1;
+				viewInfo.subresourceRange.baseArrayLayer = 0;
+				viewInfo.subresourceRange.layerCount = 1;
+
+				checkVulkan(vkCreateImageView(device->logicalDevice, &viewInfo,
+					context->allocator, &state->views[i]));
+			}
+
+			if (!detectDeviceDepthFormat(device))
+			{
+				device->depthFormat = VK_FORMAT_UNDEFINED;
+				Logger::staticLog<logLevel::TFATAL>("failed to find a supported format");
+			}
+
+			// depth image and view
+			state->depthAttachment = tnewConstruct<vulkanImage>(context, device, VK_IMAGE_TYPE_2D,
+				swapExtent.width, swapExtent.height, device->depthFormat, VK_IMAGE_TILING_OPTIMAL, 
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+				TRUE, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+			Logger::staticLog<logLevel::TDEBUG>("found something: " + 
+				std::to_string(state->depthAttachment->width));
+
 		}
 
 		TINLINE void _destroy()
@@ -535,6 +767,37 @@ namespace toast
 		}
 
 		return true;
+	}
+
+	TINLINE b8 detectDeviceDepthFormat(vulkanDevice * device)
+	{
+		constexpr u64 candidateCount = 3;
+		VkFormat candidates[candidateCount] = {
+			VK_FORMAT_D32_SFLOAT,
+			VK_FORMAT_D32_SFLOAT_S8_UINT,
+			VK_FORMAT_D24_UNORM_S8_UINT
+		};
+
+		u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+		for (u64 i = 0; i < candidateCount; ++i)
+		{
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(device->physicalDevice, candidates[i], &props);
+
+			if ((props.linearTilingFeatures & flags) == flags)
+			{
+				device->depthFormat = candidates[i];
+				return true;
+			}
+			else if ((props.optimalTilingFeatures & flags) == flags)
+			{
+				device->depthFormat = candidates[i];
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	b8 Renderer::createLogicalDevice()

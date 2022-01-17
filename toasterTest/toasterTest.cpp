@@ -15,6 +15,8 @@ public:
 
 	bool start() override
 	{
+		toast::Application::debugLog("Console message, and saved in file");
+		toast::debugWrite("Console message");
 		return true;
 	}
 

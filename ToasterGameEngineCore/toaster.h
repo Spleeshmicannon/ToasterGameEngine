@@ -10,6 +10,11 @@
 
 namespace toast
 {
+	TINLINE void debugWrite(const char * message)
+	{
+		Logger::staticLog<logLevel::TUSER_DEBUG>(message);
+	}
+
 	/// <summary>
 	/// Run inside your main function and
 	/// reference your instance of a 

@@ -15,6 +15,7 @@ namespace toast
 
 	struct vulkanContext;
 	struct vulkanDevice;
+	struct vulkanImage;
 
 	class Swapchain;
 
@@ -24,6 +25,7 @@ namespace toast
 		platformState* platState;
 		vulkanContext* context;
 		vulkanDevice* device;
+		//Swapchain* swapchain;
 
 	private:
 		void resized(u16 width, u16 height);
