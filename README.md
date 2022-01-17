@@ -5,8 +5,8 @@ Games that will not only run on toasters, but run fast and run well on them. The
 moment are windows and linux, with Apple Mac support potentially coming in the future.
 
 ## Kohi
-I will mention here that alot of my design decisions and the general structure of the engine are either
-heavily influenced or almost copied from the Kohi Game Engine. It is written in C though, while this is in
+I will mention here that alot of my design decisions and the general structure of the engine are
+influenced or inspired by the Kohi Game Engine. It is written in C though, while this is in
 C++ so there are some major differences. 
 
 Travis Vroman, the creator of Kohi, has a youtube channel where 
