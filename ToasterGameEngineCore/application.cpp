@@ -232,8 +232,8 @@ namespace toast
 		running = false;
 
 		// calling shutdown functions
+		internals->renderer.shutdown(internals->platform.state);
 		internals->platform.shutdown();
-		internals->renderer.shutdown();
 
 		// deallocating memory and calling destructors
 		tdelete<applicationInternals>(internals);

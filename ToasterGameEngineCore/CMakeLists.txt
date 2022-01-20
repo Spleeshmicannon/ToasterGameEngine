@@ -10,7 +10,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # getting vulkan
-find_package(Vulkan REQUIRED)
+# find_package(Vulkan REQUIRED)
+
+# getting OpenGL
+find_package(OpenGL REQUIRED)
+set(GLEW_USE_STATIC_LIBS TRUE)
+find_package(GLEW REQUIRED)
 
 # Add source to this project's executable.
 add_library (ToasterGameEngineCore SHARED
@@ -18,8 +23,10 @@ add_library (ToasterGameEngineCore SHARED
 "render/renderer.cpp" "clock.cpp" "platform/platformState.h"  )
 
 # TODO: Add tests and install targets if needed.
-target_include_directories(ToasterGameEngineCore PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}  "${sourceDir}/out/install/${presetName}/toasterTest")
-target_link_libraries(ToasterGameEngineCore PRIVATE Vulkan::Vulkan)
+target_include_directories(ToasterGameEngineCore PUBLIC 
+	${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR} 
+	"${sourceDir}/out/install/${presetName}/toasterTest" )
+target_link_libraries(ToasterGameEngineCore PRIVATE OpenGL::GL GLEW::GLEW)
 
 
 if(UNIX AND NOT APPLE)
