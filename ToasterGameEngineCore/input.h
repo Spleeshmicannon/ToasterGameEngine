@@ -173,8 +173,8 @@ namespace toast
         TEXPORT static b8 wasMseBtnDown(mseBtns btn);
         TEXPORT static b8 wasMseBtnUp(mseBtns btn);
 
-        TEXPORT static void getMsePos(point* pt);
-        TEXPORT static void getPrevMsePos(point* pt);
+        TEXPORT static void getMsePos(vertex* pt);
+        TEXPORT static void getPrevMsePos(vertex* pt);
 
         static void processKey(keys key, b8 pressed);
         static void processBtn(mseBtns btn, b8 pressed);

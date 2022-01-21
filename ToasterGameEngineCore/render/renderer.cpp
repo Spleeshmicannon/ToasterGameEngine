@@ -2,7 +2,8 @@
 
 #define GLEW_STATIC 
 #include <GL/glew.h>
-#include <gl/GLU.h>
+#include <GL/GLU.h>
+#include <gl/GL.h>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -15,9 +16,10 @@ namespace toast
 		HDC device;
 		HGLRC render;
 		GLuint vbo;
+		u16 width, height;
 	};
 
-	b8 Renderer::initialise(str<char> name, platformState* state)
+	b8 Renderer::initialise(str<char> name, platformState* state, u16 width, u16 height)
 	{
 		// setting up context
 		context = allocate<renderContext>();
@@ -55,7 +57,7 @@ namespace toast
 		if (!wglMakeCurrent(context->device, context->render))
 		{
 			char buffer[32];
-			ultoa(GetLastError(), buffer, 10);
+			_ultoa(GetLastError(), buffer, 10);
 			const str<char> msg = buffer;
 
 			Logger::staticLog<logLevel::TFATAL>("Failed to make gl context current: " + msg);
@@ -71,19 +73,41 @@ namespace toast
 			Logger::staticLog<logLevel::TFATAL>("Glew error, " + msg);
 			return false;
 		}
-		
+
+		// instead of max width being 0 -> 1 
+		// its 0 -> whatever width is set to be
+		glMatrixMode(GL_PROJECTION_MATRIX);
+		glLoadIdentity();
+
+		gluOrtho2D(0, width, 0, height);
+
+		// setting width and height
+		context->width = width;
+		context->height = height;
+
 		// creating a general usage vbo
 		glGenBuffers(1, &context->vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, context->vbo);
 
 		return true;
 	}
 
 	void Renderer::drawFrame(renderPacket* packet)
 	{
-		// clear screen
 		glClear(GL_COLOR_BUFFER_BIT);
 		glFlush();
+
+		if (packet->vertexCount > 0)
+		{
+			glBindBuffer(GL_ARRAY_BUFFER, context->vbo);
+			glBufferData(GL_ARRAY_BUFFER, packet->vertexCount * sizeof(f32) * 3,
+				packet->vertices, GL_STATIC_DRAW);
+
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, context->vbo);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+			glDrawArrays(GL_POINTS, 0, packet->vertexCount * sizeof(f32) * 3);
+			glDisableVertexAttribArray(0);
+		}
 
 		// swapping front and back buffers
 		SwapBuffers(context->device);

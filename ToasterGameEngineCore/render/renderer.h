@@ -9,6 +9,9 @@ namespace toast
 	struct renderPacket
 	{
 		f32 deltaTime;
+		
+		u64 vertexCount;
+		vertex3D* vertices;
 	};
 
 	struct renderContext;
@@ -19,7 +22,7 @@ namespace toast
 		renderContext* context;
 
 	public:
-		b8 initialise(str<char> name, platformState* state);
+		b8 initialise(str<char> name, platformState* state, u16 width, u16 height);
 		void drawFrame(renderPacket* packet);
 		void shutdown(platformState* state);
 	};

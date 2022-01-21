@@ -15,6 +15,7 @@ namespace toast
 	private:
 		static b8 running;
 		static b8 suspended;
+		static std::vector<vertex3D> vertices;
 
 	private:
 		static applicationInternals* internals;
@@ -31,5 +32,6 @@ namespace toast
 		static b8 create(Game &usrGame);
 		static b8 runLoop(Game &usrGame);
 		static void debugLog(const char* message);
+		static void drawPixel(f32 x, f32 y, f32 z);
 	};
 }

@@ -15,7 +15,7 @@ namespace toast
 
 	struct mouseState
 	{
-		point pt;
+		vertex pt;
 		u8 btns[static_cast<u8>(mseBtns::MAX_BUTTONS)];
 	};
 
@@ -86,13 +86,13 @@ namespace toast
 		return !state->prevMse.btns[static_cast<u16>(btn)];
 	}
 
-	void Input::getMsePos(point* pt)
+	void Input::getMsePos(vertex* pt)
 	{
 		(*pt).x = state->currMse.pt.x;
 		(*pt).y = state->currMse.pt.y;
 	}
 
-	void Input::getPrevMsePos(point* pt)
+	void Input::getPrevMsePos(vertex* pt)
 	{
 		(*pt).x = state->prevMse.pt.x;
 		(*pt).y = state->prevMse.pt.y;

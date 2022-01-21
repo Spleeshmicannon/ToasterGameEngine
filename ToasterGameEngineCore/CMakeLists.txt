@@ -26,7 +26,7 @@ add_library (ToasterGameEngineCore SHARED
 target_include_directories(ToasterGameEngineCore PUBLIC 
 	${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR} 
 	"${sourceDir}/out/install/${presetName}/toasterTest" )
-target_link_libraries(ToasterGameEngineCore PRIVATE OpenGL::GL GLEW::GLEW)
+target_link_libraries(ToasterGameEngineCore PRIVATE OpenGL::GLU GLEW::GLEW)
 
 
 if(UNIX AND NOT APPLE)

@@ -3,8 +3,7 @@
 
 namespace toast
 {
-	struct point
-	{
-		i16 x, y;
-	};
+	struct point	{ i32 x, y; };
+	struct vertex	{ f32 x, y; };
+	struct vertex3D { f32 x, y, z; };
 }

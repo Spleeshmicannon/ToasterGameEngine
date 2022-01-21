@@ -11,6 +11,7 @@ namespace toast
 {
 	b8 Application::running;
 	b8 Application::suspended;
+	std::vector<vertex3D> Application::vertices;
 
 	applicationInternals* Application::internals;
 
@@ -127,7 +128,10 @@ namespace toast
 		}
 
 		// starting renderer before user code but after platform
-		if (!internals->renderer.initialise(gameConfig.name, internals->platform.state))
+		if (!internals->renderer.initialise(
+			gameConfig.name, internals->platform.state, 
+			gameConfig.width, gameConfig.height)
+			)
 		{
 			internals->logger.log<logLevel::TFATAL>(
 				"renderer couldn't be initialised");
@@ -210,8 +214,13 @@ namespace toast
 					break;
 				}
 
-				renderPacket packet = { delta };
+				renderPacket packet = { delta, vertices.size(), vertices.data()};
 				internals->renderer.drawFrame(&packet);
+
+				for (int i = 0; i < vertices.size(); ++i)
+				{
+					vertices.erase(vertices.begin() + i);
+				}
 
 				const f64 frameEndTime = Platform::getAbsTime();
 				const f64 frameElapTime = frameEndTime - frameStartTime;
@@ -248,6 +257,11 @@ namespace toast
 		Platform::destroyHeap();
 
 		return true;
+	}
+
+	void Application::drawPixel(f32 x, f32 y, f32 z)
+	{
+		vertices.push_back(vertex3D({ x,y,z }));
 	}
 
 	void Application::debugLog(const char* message)
