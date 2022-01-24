@@ -11,7 +11,7 @@ namespace toast
 {
 	b8 Application::running;
 	b8 Application::suspended;
-	std::vector<vertex3D> Application::vertices;
+	std::vector<vertex3D> * Application::vertices;
 
 	applicationInternals* Application::internals;
 
@@ -183,6 +183,9 @@ namespace toast
 
 		while (running)
 		{
+			internals->clock.start();
+			internals->clock.update();
+
 			if (!internals->platform.pumpMessages())
 			{
 				running = false;
@@ -194,6 +197,8 @@ namespace toast
 			// if either method returns false the loop ends
 			if(!suspended)
 			{
+				vertices = tnew<std::vector<vertex3D>>();
+
 				internals->clock.update();
 				const f64 delta = (internals->clock.elapsed - internals->lastTime);
 				const f64 frameStartTime = Platform::getAbsTime();
@@ -205,7 +210,7 @@ namespace toast
 						"Failed to pump messages");
 					break;
 				}
-					
+
 				if (!usrGame.update((f32)delta))
 				{
 					running = false;
@@ -214,13 +219,10 @@ namespace toast
 					break;
 				}
 
-				renderPacket packet = { delta, vertices.size(), vertices.data()};
+				renderPacket packet = { delta, vertices->size(), vertices->data()};
 				internals->renderer.drawFrame(&packet);
 
-				for (int i = 0; i < vertices.size(); ++i)
-				{
-					vertices.erase(vertices.begin() + i);
-				}
+				tdelete<std::vector<vertex3D>>(vertices);
 
 				const f64 frameEndTime = Platform::getAbsTime();
 				const f64 frameElapTime = frameEndTime - frameStartTime;
@@ -235,6 +237,8 @@ namespace toast
 				}
 
 				Input::update(delta);
+
+				internals->clock.stop();
 			}
 		}
 
@@ -261,7 +265,7 @@ namespace toast
 
 	void Application::drawPixel(f32 x, f32 y, f32 z)
 	{
-		vertices.push_back(vertex3D({ x,y,z }));
+		vertices->push_back(vertex3D({ x,y,z }));
 	}
 
 	void Application::debugLog(const char* message)

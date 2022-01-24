@@ -9,6 +9,9 @@ set(CMAKE_CXX_STANDARD 20)
 # turning off exceptions
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# set variable
+set(DEPLOY_DIR ${PROJECT_BINARY_DIR}/deploy)
+
 # getting vulkan
 # find_package(Vulkan REQUIRED)
 
@@ -20,13 +23,19 @@ find_package(GLEW REQUIRED)
 # Add source to this project's executable.
 add_library (ToasterGameEngineCore SHARED
 "application.cpp" "platform/platform.cpp" "logger.cpp" "event.cpp" "input.cpp" 
-"render/renderer.cpp" "clock.cpp" "platform/platformState.h"  )
+"render/renderer.cpp" "clock.cpp")
 
 # TODO: Add tests and install targets if needed.
 target_include_directories(ToasterGameEngineCore PUBLIC 
 	${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR} 
 	"${sourceDir}/out/install/${presetName}/toasterTest" )
 target_link_libraries(ToasterGameEngineCore PRIVATE OpenGL::GLU GLEW::GLEW)
+
+add_custom_target(copy_assets COMMAND ${CMAKE_COMMAND} 
+	-DDEPLOY_PATH=${DEPLOY_DIR}
+	-P
+	${CMAKE_CURRENT_LIST_DIR}/copy_assets.cmake)
+add_dependencies(ToasterGameEngineCore copy_assets)
 
 
 if(UNIX AND NOT APPLE)

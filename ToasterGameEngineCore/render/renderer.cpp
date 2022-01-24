@@ -17,9 +17,46 @@ namespace toast
 		HGLRC render;
 		GLuint vbo;
 		u16 width, height;
+		GLuint shaders[2];
+		GLuint program;
 	};
 
-	b8 Renderer::initialise(str<char> name, platformState* state, u16 width, u16 height)
+	b8 compileShader(const str<char>& shader, renderContext* context, int index, GLenum type);
+
+	b8 compileShader(const str<char> &shader, renderContext * context, int index, GLenum type)
+	{	
+		context->shaders[index] = glCreateShader(type);
+		
+		const char* shaders[1] = { shader.c_str() };
+		const int size = shader.size();
+
+		glShaderSource(context->shaders[index],1, shaders, &size);
+
+		glCompileShader(context->shaders[index]);
+
+		GLint success = 0;
+		glGetShaderiv(context->shaders[index], GL_COMPILE_STATUS, &success);
+
+		if (success == GL_FALSE)
+		{
+			GLint logSize = 0;
+			glGetShaderiv(context->shaders[index], GL_INFO_LOG_LENGTH, &logSize);
+			
+			char * errorLog = allocate<char>(logSize);
+			glGetShaderInfoLog(context->shaders[index], logSize, &logSize, errorLog);
+
+			const str<char> erroInfo = errorLog;
+			Logger::staticLog<logLevel::TERROR>("Failed to compile shader: " + erroInfo);
+
+			glDeleteShader(context->shaders[index]);
+
+			return false;
+		}
+		
+		return true;
+	}
+
+	b8 Renderer::initialise(const str<char>& name, platformState* state, u16 width, u16 height)
 	{
 		// setting up context
 		context = allocate<renderContext>();
@@ -74,6 +111,17 @@ namespace toast
 			return false;
 		}
 
+		// shaders
+		const str<char> vertex_shader = readFile("./shaders/shader.vert");
+		const str<char> fragment_shader = readFile("./shaders/shader.frag");
+
+		compileShader(vertex_shader, context, 0, GL_VERTEX_SHADER);
+		//compileShader(fragment_shader, context, 1, GL_FRAGMENT_SHADER);
+
+		context->program = glCreateProgram();
+		glAttachShader(context->program, context->shaders[0]);
+
+
 		// instead of max width being 0 -> 1 
 		// its 0 -> whatever width is set to be
 		glMatrixMode(GL_PROJECTION_MATRIX);
@@ -94,7 +142,6 @@ namespace toast
 	void Renderer::drawFrame(renderPacket* packet)
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
-		glFlush();
 
 		if (packet->vertexCount > 0)
 		{

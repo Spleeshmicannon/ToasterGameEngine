@@ -24,14 +24,15 @@ public:
 
 	bool update(float deltaTime) override
 	{
-		for (int x = 100; x < WIDTH - 100; ++x)
+		for (int x = 500; x < WIDTH - 500; ++x)
 		{
-			for (int y = 100; y < HEIGHT - 100; ++y)
+			for (int y = 500; y < HEIGHT - 500; ++y)
 			{
 				toast::Application::drawPixel(x, y, 0);
 			}
 		}
 
+		//toast::debugWrite("delta time: " + std::to_string(deltaTime));
 
 		return true;
 	}

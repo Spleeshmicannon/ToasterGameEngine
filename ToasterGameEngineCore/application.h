@@ -15,7 +15,7 @@ namespace toast
 	private:
 		static b8 running;
 		static b8 suspended;
-		static std::vector<vertex3D> vertices;
+		static std::vector<vertex3D> * vertices;
 
 	private:
 		static applicationInternals* internals;
