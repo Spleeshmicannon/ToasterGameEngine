@@ -9,8 +9,10 @@ namespace toast
 {
 	struct renderPacket
 	{
+		i32 winWidth, winHeight;
+
 		f32 deltaTime;
-		
+
 		u64 vertexCount;
 		vertex3D* vertices;
 	};

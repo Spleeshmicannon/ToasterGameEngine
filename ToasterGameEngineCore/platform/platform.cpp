@@ -83,12 +83,12 @@ namespace toast
 		u32 windowWidth = clientWidth;
 		u32 windowHeight = clientHeight;
 
-		u32 windowStyle = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
+		u32 windowStyle = WS_OVERLAPPED | WS_SYSMENU; //| WS_CAPTION;
 		u32 windowExStyle = WS_EX_APPWINDOW;
 
 		windowStyle |= WS_MAXIMIZEBOX;
 		windowStyle |= WS_MINIMIZEBOX;
-		windowStyle |= WS_THICKFRAME;
+		//windowStyle |= WS_THICKFRAME;
 
 		RECT borderRect = { 0,0,0,0 };
 		AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);

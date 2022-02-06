@@ -8,6 +8,14 @@
 #include <windows.h>
 #include <windowsx.h>
 
+#include "../platform/platform.h"
+
+#include "../glm/glm.hpp"
+#include "../glm/ext.hpp"
+#include "../glm/common.hpp"
+#include "../glm/fwd.hpp"
+#include "../glm/geometric.hpp"
+
 namespace toast
 {
 #ifdef TWIN32
@@ -15,8 +23,7 @@ namespace toast
 	{
 		HDC device;
 		HGLRC render;
-		GLuint vbo;
-		u16 width, height;
+		GLuint vbo, vao;
 		GLuint shaders[2];
 		GLuint program;
 	};
@@ -64,26 +71,18 @@ namespace toast
 		context->device = GetDC(state->hwnd);
 		
 		// setting pixel format
-		PIXELFORMATDESCRIPTOR pfd = {
-			sizeof(PIXELFORMATDESCRIPTOR), // size
-			1,							// version number
-			PFD_DRAW_TO_WINDOW |		// support window
-			PFD_SUPPORT_OPENGL |		// support OpenGL
-			PFD_DOUBLEBUFFER,			// double buffered
-			PFD_TYPE_RGBA,				// RGBA type
-			24,							// 24-bit color depth
-			0, 0, 0, 0, 0, 0,			// color bits ignored
-			0,							// no alpha buffer
-			0,							// shift bit ignored
-			0,							// no accumulation buffer
-			0, 0, 0, 0,					// accum bits ignored
-			32,							// 32-bit z-buffer
-			0,							// no stencil buffer
-			0,							// no auxiliary
-			PFD_MAIN_PLANE,				// main layer
-			0,							// reserved
-			0, 0, 0						// layer masks ignored
-		};
+		PIXELFORMATDESCRIPTOR pfd;
+		pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cAlphaBits = 0;
+		pfd.cAccumBits = 0;
+		pfd.cDepthBits = 0;
+		pfd.cStencilBits = 0;
+		pfd.cAuxBuffers = 0;
+		pfd.iLayerType = PFD_MAIN_PLANE;
 
 		SetPixelFormat(context->device, ChoosePixelFormat(context->device, &pfd), &pfd);
 
@@ -116,25 +115,45 @@ namespace toast
 		const str<char> fragment_shader = readFile("./shaders/shader.frag");
 
 		compileShader(vertex_shader, context, 0, GL_VERTEX_SHADER);
-		//compileShader(fragment_shader, context, 1, GL_FRAGMENT_SHADER);
+		compileShader(fragment_shader, context, 1, GL_FRAGMENT_SHADER);
 
+		// linking the program (collection of shaders)
 		context->program = glCreateProgram();
+		
 		glAttachShader(context->program, context->shaders[0]);
+		glAttachShader(context->program, context->shaders[1]);
+		
+		glLinkProgram(context->program);
 
+		GLint isLinked = 0;
+		glGetProgramiv(context->program, GL_LINK_STATUS, (int*)&isLinked);
 
-		// instead of max width being 0 -> 1 
-		// its 0 -> whatever width is set to be
-		glMatrixMode(GL_PROJECTION_MATRIX);
-		glLoadIdentity();
+		// error checking
+		if (isLinked == GL_FALSE)
+		{
+			GLint maxLength = 0;
+			glGetProgramiv(context->program, GL_INFO_LOG_LENGTH, &maxLength);
 
-		gluOrtho2D(0, width, 0, height);
+			char* errorLog = allocate<char>(maxLength);
+			glGetProgramInfoLog(context->program, maxLength, &maxLength, errorLog);
 
-		// setting width and height
-		context->width = width;
-		context->height = height;
+			const str<char> erroInfo = errorLog;
+			Logger::staticLog<logLevel::TFATAL>("Failed to link shaders: " + erroInfo);
+
+			glDeleteProgram(context->program);
+			return false;
+		}
+
+		// Orth2D management
+		glm::mat<4, 4, f32> matrix = glm::ortho<f32>(0, width, 0, height);
+
+		glUseProgram(context->program);
+		glUniformMatrix4fv(glGetUniformLocation(context->program, "model"), 1, 
+			GL_FALSE, glm::value_ptr(matrix));
 
 		// creating a general usage vbo
 		glGenBuffers(1, &context->vbo);
+		glGenVertexArrays(1, &context->vao);
 
 		return true;
 	}
@@ -145,14 +164,35 @@ namespace toast
 
 		if (packet->vertexCount > 0)
 		{
+			// bind VAO
+			glBindVertexArray(context->vao);
+
+			// binding VBO
 			glBindBuffer(GL_ARRAY_BUFFER, context->vbo);
 			glBufferData(GL_ARRAY_BUFFER, packet->vertexCount * sizeof(f32) * 3,
 				packet->vertices, GL_STATIC_DRAW);
 
+			// vertex shader interpret info
 			glEnableVertexAttribArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, context->vbo);
+			
+			// ortho2D
+			glm::mat<4, 4, f32> matrix = glm::ortho<f32>(
+				0, packet->winWidth, 
+				0, packet->winHeight
+			);
+
+			// init shader program
+			glUseProgram(context->program);
+
+			// passing window size to the vertex shader
+			glUniformMatrix4fv(glGetUniformLocation(context->program, "model"), 1,
+				GL_FALSE, glm::value_ptr(matrix));
+
+			// drawing 
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 			glDrawArrays(GL_POINTS, 0, packet->vertexCount * sizeof(f32) * 3);
+			
+			// ender shader usage
 			glDisableVertexAttribArray(0);
 		}
 

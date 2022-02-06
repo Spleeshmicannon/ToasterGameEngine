@@ -23,6 +23,7 @@ namespace toast
 		Clock clock;
 		f64 lastTime;
 		Renderer renderer;
+		config gameConfig;
 	};
 
 	b8 Application::create(Game& usrGame)
@@ -89,11 +90,16 @@ namespace toast
 			0, onKey);
 
 		// getting user defined configuration
-		toast::config gameConfig = usrGame.init();
+		internals->gameConfig = usrGame.init();
 
 		// starting platform specific window and/or context
-		toast::err error = internals->platform.start(gameConfig.name, gameConfig.posX, 
-			gameConfig.posY, gameConfig.width, gameConfig.height);
+		toast::err error = internals->platform.start(
+			internals->gameConfig.name, 
+			internals->gameConfig.posX,
+			internals->gameConfig.posY, 
+			internals->gameConfig.width,
+			internals->gameConfig.height
+		);
 
 		switch (error)
 		{
@@ -129,8 +135,8 @@ namespace toast
 
 		// starting renderer before user code but after platform
 		if (!internals->renderer.initialise(
-			gameConfig.name, internals->platform.state, 
-			gameConfig.width, gameConfig.height)
+			internals->gameConfig.name, internals->platform.state,
+			internals->gameConfig.width, internals->gameConfig.height)
 			)
 		{
 			internals->logger.log<logLevel::TFATAL>(
@@ -219,7 +225,13 @@ namespace toast
 					break;
 				}
 
-				renderPacket packet = { delta, vertices->size(), vertices->data()};
+				renderPacket packet = {
+					internals->gameConfig.width,
+					internals->gameConfig.height,
+					delta, vertices->size(),
+					vertices->data()
+				};
+				;
 				internals->renderer.drawFrame(&packet);
 
 				tdelete<std::vector<vertex3D>>(vertices);
@@ -271,6 +283,11 @@ namespace toast
 	void Application::debugLog(const char* message)
 	{
 		internals->logger.log<logLevel::TUSER_DEBUG>(message);
+	}
+
+	f64 Application::getTime()
+	{
+		return Platform::getAbsTime();
 	}
 
 	b8 Application::onEvent(eventCode code, ptr sender, ptr listener, eventContext context)

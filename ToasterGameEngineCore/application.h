@@ -33,5 +33,6 @@ namespace toast
 		static b8 runLoop(Game &usrGame);
 		static void debugLog(const char* message);
 		static void drawPixel(f32 x, f32 y, f32 z);
+		static f64 getTime();
 	};
 }

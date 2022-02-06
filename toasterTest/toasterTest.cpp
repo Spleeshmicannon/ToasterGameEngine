@@ -4,8 +4,8 @@
 #include "ToasterGameEngineCore/toaster.h"
 #include "ToasterGameEngineCore/application.h"
 
-#define WIDTH 1920
-#define HEIGHT 1080
+#define WIDTH 1000
+#define HEIGHT 1000
 #define WIN_X 100
 #define WIN_Y 100
 
@@ -24,13 +24,14 @@ public:
 
 	bool update(float deltaTime) override
 	{
-		for (int x = 500; x < WIDTH - 500; ++x)
+		for (int x = 0; x < WIDTH; x++)
 		{
-			for (int y = 500; y < HEIGHT - 500; ++y)
+			for (int y = 0; y < HEIGHT; y++)
 			{
 				toast::Application::drawPixel(x, y, 0);
 			}
 		}
+
 
 		//toast::debugWrite("delta time: " + std::to_string(deltaTime));
 
